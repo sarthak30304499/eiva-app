@@ -28,13 +28,15 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(() => scrollToBottom(), [messages, isLoading]);
 
+  const [speechError, setSpeechError] = useState<string | null>(null);
+
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
-      
+
       recognitionRef.current.onresult = (event: any) => {
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -46,18 +48,43 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
           setInput(prev => (prev + ' ' + transcript).trim());
         }
       };
+
       recognitionRef.current.onend = () => setIsListening(false);
-      recognitionRef.current.onerror = () => setIsListening(false);
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error("AIChat Speech Error:", event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          setSpeechError("Microphone access denied.");
+          alert("Please allow microphone access to use voice input.");
+        } else if (event.error === 'no-speech') {
+          // ignore
+        } else {
+          setSpeechError("Voice error: " + event.error);
+        }
+      };
+
+    } else {
+      console.warn("Speech Recognition not supported in this browser.");
     }
   }, []);
 
   const toggleListening = () => {
+    setSpeechError(null);
     if (isListening) {
       recognitionRef.current?.stop();
     } else {
       if (recognitionRef.current) {
-        setIsListening(true);
-        recognitionRef.current.start();
+        try {
+          setIsListening(true);
+          recognitionRef.current.start();
+        } catch (e) {
+          console.error("Start listening error:", e);
+          setIsListening(false);
+          setSpeechError("Could not start microphone.");
+        }
+      } else {
+        alert("Speech Recognition is not supported in this browser. Please use Chrome.");
       }
     }
   };
@@ -80,7 +107,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     const buffer = await decodeAudioData(speechData, audioContextRef.current);
-    
+
     const source = audioContextRef.current.createBufferSource();
     source.buffer = buffer;
     source.connect(audioContextRef.current.destination);
@@ -144,17 +171,17 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, aiMsg]);
-      
+
       // Auto-play if Voice Mode is ON
       if (voiceMode && response.text) {
         handleSpeak(aiMsg.id, response.text);
       }
     } catch (err) {
-      setMessages(prev => [...prev, { 
-        id: 'err', 
-        role: 'model', 
-        parts: [{ text: "Error connecting to EIVA intelligence. Please check your network." }], 
-        timestamp: new Date().toISOString() 
+      setMessages(prev => [...prev, {
+        id: 'err',
+        role: 'model',
+        parts: [{ text: "Error connecting to EIVA intelligence. Please check your network." }],
+        timestamp: new Date().toISOString()
       }]);
     } finally {
       setIsLoading(false);
@@ -175,19 +202,18 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center opacity-30">
-               <span className="text-6xl mb-4">🚀</span>
-               <p className="font-bold text-sm tracking-widest uppercase">Awaiting Transmission</p>
+              <span className="text-6xl mb-4">🚀</span>
+              <p className="font-bold text-sm tracking-widest uppercase">Awaiting Transmission</p>
             </div>
           )}
 
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
               <div className={`max-w-[85%] md:max-w-[70%] space-y-1`}>
-                <div className={`p-4 rounded-2xl relative group/msg ${
-                  msg.role === 'user' 
-                  ? 'bg-[#6C63FF] text-white shadow-lg' 
+                <div className={`p-4 rounded-2xl relative group/msg ${msg.role === 'user'
+                  ? 'bg-[#6C63FF] text-white shadow-lg'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border dark:border-gray-700'
-                }`}>
+                  }`}>
                   {msg.parts.map((part, i) => (
                     <div key={i} className="space-y-2">
                       {part.inlineData && (
@@ -196,9 +222,9 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
                       {part.text && <div className="text-sm leading-relaxed">{part.text}</div>}
                     </div>
                   ))}
-                  
+
                   {msg.role === 'model' && msg.parts[0]?.text && (
-                    <button 
+                    <button
                       onClick={() => handleSpeak(msg.id, msg.parts[0].text!)}
                       className={`absolute -right-10 top-2 p-1.5 rounded-full shadow-sm transition-all opacity-0 group-hover/msg:opacity-100 ${playingMessageId === msg.id ? 'bg-[#6C63FF] text-white animate-pulse opacity-100' : 'bg-white dark:bg-gray-700 text-[#6C63FF] border dark:border-gray-600'}`}
                     >
@@ -225,9 +251,9 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
                 <button onClick={removeFile} className="text-red-500 text-[10px] font-bold uppercase">Discard</button>
               </div>
             )}
-            
+
             <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-2 flex items-center border-2 border-transparent focus-within:border-[#6C63FF] transition-all">
-              <button 
+              <button
                 onClick={toggleListening}
                 className={`p-3 rounded-full transition-all ${isListening ? 'text-red-500 bg-red-50 dark:bg-red-900/20 animate-pulse' : 'text-gray-400 hover:text-[#6C63FF]'}`}
                 title={isListening ? 'Stop listening' : 'Voice Input'}
@@ -237,12 +263,18 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
                 </svg>
               </button>
 
+              {speechError && (
+                <div className="absolute bottom-full left-10 mb-2 bg-red-500 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-50 animate-fade-in-down">
+                  ⚠️ {speechError}
+                </div>
+              )}
+
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
               <button onClick={() => fileInputRef.current?.click()} className="p-3 text-gray-400 hover:text-[#6C63FF]">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               </button>
-              
-              <textarea 
+
+              <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
@@ -250,16 +282,16 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
                 className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-3 resize-none max-h-32"
                 rows={1}
               />
-              
-              <button 
+
+              <button
                 onClick={handleSend}
                 disabled={isLoading || (!input.trim() && !selectedFile)}
                 className={`p-3 rounded-xl transition-all ${isLoading ? 'opacity-30' : 'text-[#6C63FF] hover:scale-110'}`}
               >
                 {isLoading ? (
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                 ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 12h14m-7-7l7 7-7 7"/></svg>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 12h14m-7-7l7 7-7 7" /></svg>
                 )}
               </button>
             </div>

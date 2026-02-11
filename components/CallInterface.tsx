@@ -17,6 +17,8 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ user, onEndCall }) => {
     const synthRef = useRef<SpeechSynthesis>(window.speechSynthesis);
     const silenceTimer = useRef<any>(null);
 
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
     useEffect(() => {
         // Initialize Speech Recognition
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -29,6 +31,7 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ user, onEndCall }) => {
             recognitionRef.current.onstart = () => {
                 setStatus('listening');
                 setTranscript('');
+                setErrorMessage(null);
                 // Clear any silence timer
                 if (silenceTimer.current) clearTimeout(silenceTimer.current);
             };
@@ -60,10 +63,19 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ user, onEndCall }) => {
 
             recognitionRef.current.onerror = (event: any) => {
                 console.error("Speech recognition error", event.error);
+                if (event.error === 'not-allowed') {
+                    setErrorMessage("Microphone access denied. Please allow permission.");
+                    alert("Please allow microphone access in your browser settings to use this feature.");
+                } else if (event.error === 'no-speech') {
+                    // Ignore, just returns to idle
+                } else {
+                    setErrorMessage("Error: " + event.error);
+                }
                 setStatus('idle');
             };
 
         } else {
+            setErrorMessage("Browser not supported.");
             alert("Your browser does not support Speech Recognition. Please use Chrome.");
         }
 
@@ -75,13 +87,16 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ user, onEndCall }) => {
 
     // Start listening loop
     const startListening = () => {
+        setErrorMessage(null);
         if (recognitionRef.current && status === 'idle') {
             try {
                 recognitionRef.current.start();
             } catch (e) {
                 console.error("Error starting recognition:", e);
-                // Sometimes it's already started
+                setErrorMessage("Could not start microphone.");
             }
+        } else if (!recognitionRef.current) {
+            alert("Speech Recognition not initialized. Are you using Chrome?");
         }
     };
 
@@ -116,10 +131,6 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ user, onEndCall }) => {
         utterance.onend = () => {
             setStatus('idle');
             setTranscript('');
-            // Optional: Auto-restart listening after AI finishes? 
-            // For a phone call feel, we probably want to wait for user to tap or auto-listen.
-            // Let's go with "Tap to Speak" for now to avoid loops, or auto-listen if user prefers.
-            // For now: returning to idle.
         };
 
         synthRef.current.speak(utterance);
@@ -158,9 +169,9 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ user, onEndCall }) => {
                     <button
                         onClick={handleMicClick}
                         className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 z-10 ${status === 'listening' ? 'bg-red-500 shadow-[0_0_40px_rgba(239,68,68,0.6)] scale-110' :
-                                status === 'thinking' ? 'bg-yellow-400 animate-pulse' :
-                                    status === 'speaking' ? 'bg-green-500 shadow-[0_0_40px_rgba(34,197,94,0.6)] animate-bounce-slow' :
-                                        'bg-gray-700 hover:bg-gray-600 border border-gray-600'
+                            status === 'thinking' ? 'bg-yellow-400 animate-pulse' :
+                                status === 'speaking' ? 'bg-green-500 shadow-[0_0_40px_rgba(34,197,94,0.6)] animate-bounce-slow' :
+                                    'bg-gray-700 hover:bg-gray-600 border border-gray-600'
                             }`}
                     >
                         {status === 'listening' ? (
@@ -195,7 +206,14 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ user, onEndCall }) => {
                         <p className="text-purple-100">{aiResponse || "Thinking..."}</p>
                     </div>
                 ) : (
-                    <p className="text-gray-500 text-center">Tap the mic to start speaking.</p>
+                    <div className="flex flex-col items-center">
+                        <p className="text-gray-500 text-center">Tap the mic to start speaking.</p>
+                        {errorMessage && (
+                            <p className="text-red-400 text-xs mt-2 font-bold bg-red-900/20 px-2 py-1 rounded border border-red-500/30">
+                                ⚠️ {errorMessage}
+                            </p>
+                        )}
+                    </div>
                 )}
             </div>
 
