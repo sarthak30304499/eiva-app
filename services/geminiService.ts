@@ -30,7 +30,7 @@ export const generateAIAnswer = async (
       : { parts: [{ text: prompt }] };
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-pro",
       contents,
       config: {
         temperature: 0.7,
