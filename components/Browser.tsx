@@ -24,23 +24,37 @@ const Browser: React.FC<BrowserProps> = ({ user, onReturnToChoice }) => {
         e.preventDefault();
         if (!query.trim()) return;
 
-        let targetUrl = query.trim();
+        let input = query.trim();
+        let targetUrl = '';
 
-        // Simple heuristic to detect if it's likely a URL
-        const isUrlLike = targetUrl.includes('.') && !targetUrl.includes(' ');
+        // Intelligent Routing 🧠
 
-        if (isUrlLike) {
-            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-                targetUrl = 'https://' + targetUrl;
-            }
-            if (isValidUrl(targetUrl)) {
-                setUrl(targetUrl);
-                return;
+        // 1. YouTube -> Invidious (Embeddable YouTube)
+        if (input.toLowerCase().includes('youtube.com') || input.toLowerCase().includes('youtu.be')) {
+            // Strip protocol if present to check path
+            const clean = input.replace(/^https?:\/\//, '').replace(/^www\./, '');
+            if (clean === 'youtube.com' || clean === 'youtube.com/') {
+                targetUrl = 'https://yewtu.be/feed/popular'; // Home page equivalent
+            } else if (input.includes('watch?v=')) {
+                targetUrl = input.replace('youtube.com', 'yewtu.be');
+            } else {
+                targetUrl = 'https://yewtu.be/search?q=' + encodeURIComponent(input.replace('youtube.com', ''));
             }
         }
+        // 2. Direct URL (try to load, but many will block)
+        else if (isValidUrl(input) || (input.includes('.') && !input.includes(' '))) {
+            if (!input.startsWith('http://') && !input.startsWith('https://')) {
+                targetUrl = 'https://' + input;
+            } else {
+                targetUrl = input;
+            }
+        }
+        // 3. Fallback Search -> Google Unrestricted (igu=1 often allows embedding)
+        else {
+            targetUrl = `https://www.google.com/search?igu=1&q=${encodeURIComponent(input)}`;
+        }
 
-        // Default to DuckDuckGo search
-        setUrl(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&t=h_&ia=web`);
+        setUrl(targetUrl);
     };
 
     const openInNewTab = () => {
