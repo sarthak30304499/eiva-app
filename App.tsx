@@ -27,7 +27,6 @@ import LoginPage from './components/LoginPage';
 import ModeSelector from './components/ModeSelector';
 import AIChat from './components/AIChat';
 // import CallInterface from './components/CallInterface'; // Removed
-import Browser from './components/Browser';
 import UserChat from './components/UserChat';
 
 // ... (existing imports)
@@ -322,9 +321,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (appMode === 'browser') {
-    return <Browser user={currentUser} onReturnToChoice={() => setAppMode('choice')} />;
-  }
+
 
 
 

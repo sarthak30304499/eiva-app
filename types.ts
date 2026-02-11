@@ -48,7 +48,7 @@ export interface Space {
 
 export type SearchFilter = 'all' | 'people' | 'questions' | 'spaces';
 
-export type AppMode = 'choice' | 'ai' | 'chat' | 'browser';
+export type AppMode = 'choice' | 'ai' | 'chat';
 
 export type ViewState = 'home' | 'following' | 'answers' | 'spaces' | 'profile' | 'search' | 'space-detail' | 'user-list' | 'user-profile' | 'mode-selector' | 'ai-chat';
 
