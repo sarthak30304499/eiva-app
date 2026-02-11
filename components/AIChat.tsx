@@ -243,15 +243,10 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
                     </button>
                   )}
                 </div>
-                <div className={`flex items-center space-x-2 px-2 mt-1 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`p-1 mt-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                   <p className="text-[9px] font-bold text-gray-400 uppercase">
                     {msg.role === 'user' ? user.username : 'EIVA'}
                   </p>
-                  {msg.agentName && msg.role === 'model' && (
-                    <span className="text-[9px] font-black uppercase text-[#6C63FF] bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full border border-purple-100 dark:border-purple-800">
-                      ⚡ {msg.agentName}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
