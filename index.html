@@ -5,9 +5,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EIVA - Ask. Learn. Grow with AI.</title>
+  <style>
+    #error-display {
+      display: none;
+      padding: 20px;
+      background: #fee;
+      color: #c00;
+      font-family: monospace;
+      white-space: pre-wrap;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10000;
+    }
+  </style>
+  <script>
+    window.addEventListener('error', function (event) {
+      var display = document.getElementById('error-display');
+      if (display) {
+        display.style.display = 'block';
+        display.textContent += 'Error: ' + event.message + '\nat ' + event.filename + ':' + event.lineno + '\n\n';
+      }
+    });
+    window.addEventListener('unhandledrejection', function (event) {
+      var display = document.getElementById('error-display');
+      if (display) {
+        display.style.display = 'block';
+        display.textContent += 'Unhandled Rejection: ' + event.reason + '\n\n';
+      }
+    });
+  </script>
 </head>
 
 <body>
+  <div id="error-display"></div>
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
