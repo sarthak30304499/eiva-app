@@ -56,10 +56,145 @@
     }
 }
 
+/* Snow Theme */
+.snow-bg {
+    background: linear-gradient(to bottom, #E6F3FF 0%, #FFFFFF 100%);
+    overflow: hidden;
+    position: relative;
+}
+
+.dark .snow-bg {
+    background: linear-gradient(to bottom, #0F172A 0%, #1E293B 100%);
+}
+
+.snowflake {
+    position: fixed;
+    top: -10px;
+    color: #A5F3FC;
+    font-size: 1em;
+    font-family: Arial;
+    text-shadow: 0 0 1px #000;
+    animation-name: snowflakes-fall, snowflakes-shake;
+    animation-duration: 10s, 3s;
+    animation-timing-function: linear, ease-in-out;
+    animation-iteration-count: infinite, infinite;
+    animation-play-state: running, running;
+    z-index: 0;
+    pointer-events: none;
+}
+
+@keyframes snowflakes-fall {
+    0% {
+        top: -10%
+    }
+
+    100% {
+        top: 100%
+    }
+}
+
+@keyframes snowflakes-shake {
+    0% {
+        transform: translateX(0px);
+    }
+
+    50% {
+        transform: translateX(80px);
+    }
+
+    100% {
+        transform: translateX(0px);
+    }
+}
+
+/* Fire Theme */
+.fire-bg {
+    background: linear-gradient(to top, #290808 0%, #1a0505 100%);
+    overflow: hidden;
+    position: relative;
+}
+
+.ember {
+    position: fixed;
+    bottom: -10px;
+    width: 4px;
+    height: 4px;
+    background: #FF4500;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #FF4500, 0 0 20px #FF8C00;
+    animation: rise 5s infinite ease-in;
+    opacity: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+@keyframes rise {
+    0% {
+        bottom: -10px;
+        transform: translateX(0);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        bottom: 100%;
+        transform: translateX(-20px);
+        opacity: 0;
+    }
+}
+
+/* Wind Theme */
+.wind-bg {
+    background: linear-gradient(120deg, #e0f7fa 0%, #ffffff 100%);
+    overflow: hidden;
+    position: relative;
+}
+
+.dark .wind-bg {
+    background: linear-gradient(120deg, #111827 0%, #0d1117 100%);
+}
+
+.breeze {
+    position: fixed;
+    top: 20%;
+    left: -10%;
+    width: 200px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    animation: windBlow 6s infinite linear;
+    z-index: 0;
+    pointer-events: none;
+}
+
+@keyframes windBlow {
+    0% {
+        transform: translateX(0);
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 0.5;
+    }
+
+    80% {
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: translateX(120vw);
+        opacity: 0;
+    }
+}
+
+
 .bg-genz-gradient {
     background: linear-gradient(135deg, #6C63FF 0%, #00C6FF 50%, #FF6B81 100%);
 }
 
+/* ... keep existing animations ... */
 @keyframes float {
     0% {
         transform: translateY(0px) rotate(0deg);

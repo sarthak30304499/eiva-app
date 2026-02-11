@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User, Question, Comment, ViewState, Space, SearchFilter, AppMode } from './types';
 import { generateAIAnswer, ImagePart } from './services/geminiService';
@@ -26,14 +27,8 @@ import AskQuestion from './components/AskQuestion';
 import LoginPage from './components/LoginPage';
 import ModeSelector from './components/ModeSelector';
 import AIChat from './components/AIChat';
-// import CallInterface from './components/CallInterface'; // Removed
 import UserChat from './components/UserChat';
-
-// ... (existing imports)
-
-// ...
-
-
+import { Theme } from './components/ThemeSelector'; // Import Theme type
 
 const GUEST_USER: User = {
   id: 'guest_user',
@@ -64,8 +59,12 @@ const App: React.FC = () => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('eiva_theme');
+    const saved = localStorage.getItem('eiva_theme_mode');
     return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
+  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem('eiva_elemental_theme');
+    return (saved as Theme) || 'space';
   });
 
   const lastUserIdRef = useRef<string | null>(null);
@@ -137,12 +136,16 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('eiva_theme', 'dark');
+      localStorage.setItem('eiva_theme_mode', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('eiva_theme', 'light');
+      localStorage.setItem('eiva_theme_mode', 'light');
     }
   }, [isDarkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('eiva_elemental_theme', currentTheme);
+  }, [currentTheme]);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -316,17 +319,27 @@ const App: React.FC = () => {
           isDarkMode={isDarkMode}
           toggleTheme={() => setIsDarkMode(!isDarkMode)}
         />
-        <AIChat user={currentUser} voiceMode={voiceMode} onLogout={logout} onReturnToChoice={() => setAppMode('choice')} />
+        <AIChat
+          user={currentUser}
+          voiceMode={voiceMode}
+          onLogout={logout}
+          onReturnToChoice={() => setAppMode('choice')}
+          theme={currentTheme}
+          setTheme={setCurrentTheme}
+        />
       </div>
     );
   }
 
-
-
-
-
   if (appMode === 'chat') {
-    return <UserChat currentUser={currentUser} onReturnToChoice={() => setAppMode('choice')} />;
+    return (
+      <UserChat
+        currentUser={currentUser}
+        onReturnToChoice={() => setAppMode('choice')}
+        theme={currentTheme}
+        setTheme={setCurrentTheme}
+      />
+    );
   }
 
   const displayQuestions = getFilteredQuestions();

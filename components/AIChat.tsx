@@ -4,15 +4,18 @@ import { User, ChatMessage } from '../types';
 import { generateAIAnswer, ImagePart, generateSpeech, decodeAudioData } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import ThemeSelector, { Theme } from './ThemeSelector';
 
 interface AIChatProps {
   user: User;
   voiceMode: boolean;
   onLogout: () => void;
   onReturnToChoice: () => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 }
 
-const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToChoice }) => {
+const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToChoice, theme, setTheme }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -197,13 +200,59 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
     }
   };
 
-  return (
-    <div className="flex h-[calc(100vh-56px)] galaxy-bg relative overflow-hidden font-['Plus_Jakarta_Sans']">
-      <div className="stars"></div>
 
-      {/* Optional: Planets for extra depth */}
-      <div className="absolute top-20 -left-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-      <div className="absolute bottom-20 -right-20 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+  const getThemeBackground = () => {
+    switch (theme) {
+      case 'space':
+        return 'galaxy-bg';
+      case 'snow':
+        return 'snow-bg';
+      case 'fire':
+        return 'fire-bg';
+      case 'wind':
+        return 'wind-bg';
+      default:
+        return 'galaxy-bg';
+    }
+  };
+
+  return (
+    <div className={`flex h-[calc(100vh-56px)] ${getThemeBackground()} relative overflow-hidden font-['Plus_Jakarta_Sans'] transition-all duration-700`}>
+
+      {/* Theme Specific Elements */}
+      {theme === 'space' && <div className="stars"></div>}
+
+      {theme === 'snow' && (
+        <>
+          {[...Array(20)].map((_, i) => (
+            <div key={i} className="snowflake" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 5}s`, opacity: Math.random() }}>❄</div>
+          ))}
+        </>
+      )}
+
+      {theme === 'fire' && (
+        <>
+          {[...Array(30)].map((_, i) => (
+            <div key={i} className="ember" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 2}s`, width: `${Math.random() * 6 + 2}px` }}></div>
+          ))}
+        </>
+      )}
+
+      {theme === 'wind' && (
+        <>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="breeze" style={{ top: `${Math.random() * 80 + 10}%`, animationDelay: `${Math.random() * 3}s` }}></div>
+          ))}
+        </>
+      )}
+
+      {/* Decorative Planets/Orbs (Only for Space/Cyber look) */}
+      {theme === 'space' && (
+        <>
+          <div className="absolute top-20 -left-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 -right-20 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </>
+      )}
 
       <main className="flex-1 flex flex-col relative max-w-5xl mx-auto w-full z-10">
         <header className="px-6 py-4 border-b border-white/10 bg-black/20 backdrop-blur-md flex items-center justify-between sticky top-0 z-20">
@@ -213,7 +262,10 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
             </div>
             <div>
               <h2 className="text-base font-black uppercase tracking-widest text-white">EIVA Intelligence</h2>
-              <p className="text-[10px] text-blue-200 font-bold tracking-wider uppercase">Online & Ready</p>
+              <div className="flex items-center space-x-2">
+                <p className="text-[10px] text-blue-200 font-bold tracking-wider uppercase">Online & Ready</p>
+                <ThemeSelector currentTheme={theme} onThemeChange={setTheme} />
+              </div>
             </div>
           </div>
           <button
@@ -228,7 +280,9 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center opacity-60 animate-fade-in">
               <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-6 floating backdrop-blur-sm border border-white/10">
-                <span className="text-5xl">🌌</span>
+                <span className="text-5xl">
+                  {theme === 'space' ? '🌌' : theme === 'snow' ? '❄️' : theme === 'fire' ? '🔥' : '💨'}
+                </span>
               </div>
               <h3 className="text-2xl font-black text-white mb-2 tracking-tight">EIVA ONLINE</h3>
               <p className="text-blue-200 font-medium text-sm tracking-widest uppercase">Awaiting Transmission...</p>
@@ -241,8 +295,8 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
 
                 {/* Avatar */}
                 <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold border ${msg.role === 'user'
-                    ? 'bg-gradient-to-br from-[#6C63FF] to-[#00C6FF] border-transparent text-white'
-                    : 'bg-black/40 border-white/20 text-white backdrop-blur-md'
+                  ? 'bg-gradient-to-br from-[#6C63FF] to-[#00C6FF] border-transparent text-white'
+                  : 'bg-black/40 border-white/20 text-white backdrop-blur-md'
                   }`}>
                   {msg.role === 'user' ? user.username[0].toUpperCase() : '✨'}
                 </div>
@@ -262,8 +316,8 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
                         )}
                         {part.text && (
                           <div className={`text-sm leading-7 tracking-wide ${msg.role === 'model'
-                              ? 'prose prose-invert prose-p:my-1 prose-headings:text-white prose-a:text-blue-300 prose-code:text-blue-200 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10'
-                              : 'font-medium'
+                            ? 'prose prose-invert prose-p:my-1 prose-headings:text-white prose-a:text-blue-300 prose-code:text-blue-200 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10'
+                            : 'font-medium'
                             }`}>
                             {msg.role === 'model' ? (
                               <ReactMarkdown remarkPlugins={[remarkGfm]}>
