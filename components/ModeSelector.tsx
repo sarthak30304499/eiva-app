@@ -11,6 +11,9 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ user, onSelect }) => {
   return (
     <div className="min-h-screen galaxy-bg flex flex-col items-center justify-center p-8 font-['Plus_Jakarta_Sans'] relative overflow-hidden">
       <div className="absolute inset-0 stars"></div>
+      <div className="planet planet-1"></div>
+      <div className="planet planet-2"></div>
+      <div className="planet planet-3"></div>
 
       <div className="relative z-10 text-center mb-16 animate-fade-in">
         <h1 className="text-7xl font-black italic tracking-tighter text-white mb-2 floating">EIVA</h1>
