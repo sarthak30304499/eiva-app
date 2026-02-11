@@ -9,8 +9,9 @@ interface ModeSelectorProps {
 
 const ModeSelector: React.FC<ModeSelectorProps> = ({ user, onSelect }) => {
   return (
+    <div className="min-h-screen galaxy-bg flex flex-col items-center justify-center p-8 font-['Plus_Jakarta_Sans'] relative overflow-hidden">
       <div className="absolute inset-0 stars"></div>
-      
+
       <div className="relative z-10 text-center mb-16 animate-fade-in">
         <h1 className="text-7xl font-black italic tracking-tighter text-white mb-2 floating">EIVA</h1>
         <h2 className="text-2xl font-bold text-gray-200">How would you like to use EIVA?</h2>
@@ -51,7 +52,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ user, onSelect }) => {
           <p className="text-gray-300 font-medium text-sm">Privacy-focused search engine to explore the web without tracking.</p>
         </button>
       </div>
-    </div >
+    </div>
   );
 };
 
