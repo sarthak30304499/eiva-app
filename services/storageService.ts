@@ -65,7 +65,7 @@ export const fetchUserProfile = async (uid: string): Promise<User | null> => {
   try {
     const dbPromise = supabase.from('users').select('*').eq('id', uid).single();
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('DB_TIMEOUT')), 5000)
+      setTimeout(() => reject(new Error('DB_TIMEOUT')), 15000)
     );
 
     // Explicitly cast the result to avoid parser confusion

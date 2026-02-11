@@ -27,7 +27,14 @@ import AskQuestion from './components/AskQuestion';
 import LoginPage from './components/LoginPage';
 import ModeSelector from './components/ModeSelector';
 import AIChat from './components/AIChat';
+import CallInterface from './components/CallInterface';
 import Browser from './components/Browser';
+
+// ... (existing imports)
+
+// ...
+
+
 
 const GUEST_USER: User = {
   id: 'guest_user',
@@ -319,6 +326,10 @@ const App: React.FC = () => {
 
   if (appMode === 'browser') {
     return <Browser user={currentUser} onReturnToChoice={() => setAppMode('choice')} />;
+  }
+
+  if (appMode === 'call') {
+    return <CallInterface user={currentUser} onEndCall={() => setAppMode('choice')} />;
   }
 
   const displayQuestions = getFilteredQuestions();
