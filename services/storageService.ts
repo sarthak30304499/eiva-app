@@ -60,48 +60,49 @@ export const loginWithGoogle = async () => {
 
 export const logout = () => supabase.auth.signOut();
 
-console.log("storageService: fetchUserProfile start", uid);
-try {
-  // Failsafe: timeout after 5 seconds
-  const dbPromise = supabase.from('users').select('*').eq('id', uid).single();
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('DB_TIMEOUT')), 5000)
-  );
+export const fetchUserProfile = async (uid: string): Promise<User | null> => {
+  console.log("storageService: fetchUserProfile start", uid);
+  try {
+    // Failsafe: timeout after 5 seconds
+    const dbPromise = supabase.from('users').select('*').eq('id', uid).single();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('DB_TIMEOUT')), 5000)
+    );
 
-  const { data: profile, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
+    const { data: profile, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
 
-  if (error) {
-    if (error.code === 'PGRST116') {
-      console.log("storageService: fetchUserProfile - User not found in DB");
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log("storageService: fetchUserProfile - User not found in DB");
+        return null;
+      }
+      console.error("storageService: fetchUserProfile error fetching user", error);
       return null;
     }
-    console.error("storageService: fetchUserProfile error fetching user", error);
+
+    if (!profile) {
+      console.log("storageService: fetchUserProfile - Profile is null/undefined");
+      return null;
+    }
+
+    // Parallelize these fetches for speed and isolation
+    const [followingRes, followersRes] = await Promise.all([
+      supabase.from('follows').select('following_id').eq('follower_id', uid),
+      supabase.from('follows').select('follower_id').eq('following_id', uid)
+    ]);
+
+    if (followingRes.error) console.error("storageService: Error fetching following", followingRes.error);
+    if (followersRes.error) console.error("storageService: Error fetching followers", followersRes.error);
+
+    const following = followingRes.data?.map(f => f.following_id) || [];
+    const followers = followersRes.data?.map(f => f.follower_id) || [];
+
+    console.log("storageService: fetchUserProfile success", { id: profile.id });
+    return mapUser(profile, following, followers);
+  } catch (err) {
+    console.error("storageService: fetchUserProfile CRITICAL ERROR", err);
     return null;
   }
-
-  if (!profile) {
-    console.log("storageService: fetchUserProfile - Profile is null/undefined");
-    return null;
-  }
-
-  // Parallelize these fetches for speed and isolation
-  const [followingRes, followersRes] = await Promise.all([
-    supabase.from('follows').select('following_id').eq('follower_id', uid),
-    supabase.from('follows').select('follower_id').eq('following_id', uid)
-  ]);
-
-  if (followingRes.error) console.error("storageService: Error fetching following", followingRes.error);
-  if (followersRes.error) console.error("storageService: Error fetching followers", followersRes.error);
-
-  const following = followingRes.data?.map(f => f.following_id) || [];
-  const followers = followersRes.data?.map(f => f.follower_id) || [];
-
-  console.log("storageService: fetchUserProfile success", { id: profile.id });
-  return mapUser(profile, following, followers);
-} catch (err) {
-  console.error("storageService: fetchUserProfile CRITICAL ERROR", err);
-  return null;
-}
 };
 
 const initializeUserData = async (uid: string, email: string) => {
