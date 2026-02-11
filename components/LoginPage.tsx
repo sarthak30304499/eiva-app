@@ -4,9 +4,10 @@ import { signUpWithEmail, loginWithEmail, loginWithGoogle } from '../services/st
 
 interface LoginPageProps {
   onLogin: () => void;
+  onGuestLogin?: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = () => {
+const LoginPage: React.FC<LoginPageProps> = ({ onGuestLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -100,6 +101,15 @@ const LoginPage: React.FC<LoginPageProps> = () => {
               {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Log In')}
             </button>
           </form>
+
+          {onGuestLogin && (
+            <button
+              onClick={onGuestLogin}
+              className="w-full py-3 bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold rounded-2xl hover:bg-gray-300 dark:hover:bg-gray-700 transition-all text-sm"
+            >
+              Skip Login & Continue as Guest 🚀
+            </button>
+          )}
 
           <div className="relative flex items-center py-2">
             <div className="flex-grow border-t border-gray-200 dark:border-gray-800"></div>

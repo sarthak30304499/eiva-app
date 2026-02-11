@@ -29,6 +29,18 @@ import ModeSelector from './components/ModeSelector';
 import AIChat from './components/AIChat';
 import Browser from './components/Browser';
 
+const GUEST_USER: User = {
+  id: 'guest_user',
+  name: 'Guest Traveler',
+  username: 'guest',
+  email: 'guest@eiva.ai',
+  bio: 'Exploring the EIVA universe.',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
+  joinedAt: new Date().toISOString(),
+  following: [],
+  followers: []
+};
+
 const App: React.FC = () => {
   const [currentUser, setLocalUser] = useState<User | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
@@ -267,7 +279,13 @@ const App: React.FC = () => {
     </div>
   );
 
-  if (!currentUser) return <LoginPage onLogin={() => { }} />;
+  const handleGuestLogin = () => {
+    setLocalUser(GUEST_USER);
+    setIsAuthChecking(false);
+    setAppMode('choice');
+  };
+
+  if (!currentUser) return <LoginPage onLogin={() => { }} onGuestLogin={handleGuestLogin} />;
 
   if (appMode === 'choice') {
     return <ModeSelector user={currentUser} onSelect={setAppMode} />;
