@@ -255,25 +255,21 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
       )}
 
       <main className="flex-1 flex flex-col relative max-w-5xl mx-auto w-full z-10">
-        <header className="px-6 py-4 border-b border-white/10 bg-black/20 backdrop-blur-md flex items-center justify-between sticky top-0 z-20">
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#6C63FF] to-[#00C6FF] flex items-center justify-center shadow-lg shadow-purple-500/30">
-              <span className="text-xl">✨</span>
-            </div>
-            <div>
-              <h2 className="text-base font-black uppercase tracking-widest text-white">EIVA Intelligence</h2>
-              <div className="flex items-center space-x-2">
-                <p className="text-[10px] text-blue-200 font-bold tracking-wider uppercase">Online & Ready</p>
-                <ThemeSelector currentTheme={theme} onThemeChange={setTheme} />
-              </div>
-            </div>
+        <header className="px-6 py-4 flex items-center justify-between sticky top-0 z-20 pointer-events-none">
+          <div className="pointer-events-auto">
+            {/* Empty top left for clean look, or maybe just a small logo if needed */}
           </div>
-          <button
-            onClick={onReturnToChoice}
-            className="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all backdrop-blur-sm"
-          >
-            Exit Module
-          </button>
+          <div className="flex items-center space-x-2 pointer-events-auto bg-black/40 backdrop-blur-md rounded-full p-1 pl-4 border border-white/10">
+            <span className="text-xs font-bold text-white/50 uppercase tracking-widest mr-2">EIVA</span>
+            <ThemeSelector currentTheme={theme} onThemeChange={setTheme} />
+            <div className="w-px h-4 bg-white/10 mx-2"></div>
+            <button
+              onClick={onReturnToChoice}
+              className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition-all"
+            >
+              Exit
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 scrollbar-hide">
@@ -355,36 +351,23 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
         </div>
 
         <div className="p-4 md:p-6 pb-8">
-          <div className="max-w-4xl mx-auto relative">
+          <div className="max-w-3xl mx-auto relative">
             {previewUrl && (
               <div className="absolute bottom-full left-0 mb-4 p-3 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl flex items-center space-x-4 animate-slide-up">
                 <img src={previewUrl} className="w-16 h-16 rounded-lg object-cover border border-white/20" />
                 <div>
                   <p className="text-xs font-bold text-white mb-1">Image Attached</p>
-                  <button onClick={removeFile} className="text-red-400 text-[10px] font-black uppercase hover:text-red-300 transition-colors">Discard Asset</button>
+                  <button onClick={removeFile} className="text-red-400 text-[10px] font-black uppercase hover:text-red-300 transition-colors">Discard</button>
                 </div>
               </div>
             )}
 
-            <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-2 flex items-center border border-white/10 focus-within:border-white/30 focus-within:bg-white/10 transition-all shadow-2xl shadow-purple-900/20">
+            <div className="bg-[#1e1e1e]/80 backdrop-blur-xl rounded-2xl p-2 flex items-end border border-white/10 shadow-2xl ring-1 ring-white/5 focus-within:ring-purple-500/50 transition-all">
               <button
-                onClick={toggleListening}
-                className={`p-4 rounded-full transition-all ${isListening ? 'bg-red-500/20 text-red-400 animate-pulse' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                title={isListening ? 'Stop listening' : 'Msg via Voice'}
+                onClick={() => fileInputRef.current?.click()}
+                className="p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors mb-0.5"
+                title="Upload Image"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-20a3 3 0 00-3 3v8a3 3 0 006 0V5a3 3 0 00-3-3z" />
-                </svg>
-              </button>
-
-              {speechError && (
-                <div className="absolute bottom-full left-10 mb-2 bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap z-50 animate-fade-in-down font-bold">
-                  ⚠️ {speechError}
-                </div>
-              )}
-
-              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-              <button onClick={() => fileInputRef.current?.click()} className="p-4 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
               </button>
 
@@ -392,24 +375,45 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder={isListening ? "Listening..." : "Message EIVA..."}
-                className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-4 text-white placeholder-gray-500 resize-none max-h-32 min-h-[56px] leading-relaxed"
+                placeholder="Ask anything..."
+                className="flex-1 bg-transparent border-none focus:ring-0 text-base py-3 px-2 text-white placeholder-gray-500 resize-none max-h-48 min-h-[48px] leading-relaxed scrollbar-hide"
                 rows={1}
+                style={{ height: 'auto', minHeight: '44px' }}
               />
 
-              <button
-                onClick={handleSend}
-                disabled={isLoading || (!input.trim() && !selectedFile)}
-                className={`p-4 rounded-full transition-all m-1 ${isLoading ? 'opacity-30' : 'bg-white text-black hover:scale-105 shadow-lg shadow-white/10'}`}
-              >
-                {isLoading ? (
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14m-7-7l7 7-7 7" /></svg>
-                )}
-              </button>
+              <div className="flex items-center space-x-1 mb-0.5">
+                <button
+                  onClick={toggleListening}
+                  className={`p-3 rounded-xl transition-all ${isListening ? 'bg-red-500/20 text-red-400 animate-pulse' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                  title={isListening ? 'Stop listening' : 'Voice Input'}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-20a3 3 0 00-3 3v8a3 3 0 006 0V5a3 3 0 00-3-3z" />
+                  </svg>
+                </button>
+
+                <button
+                  onClick={handleSend}
+                  disabled={isLoading || (!input.trim() && !selectedFile)}
+                  className={`p-3 rounded-xl transition-all ${isLoading || (!input.trim() && !selectedFile) ? 'opacity-30 cursor-not-allowed bg-white/5 text-gray-400' : 'bg-white text-black hover:scale-105 shadow-lg shadow-white/10'}`}
+                >
+                  {isLoading ? (
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14m-7-7l7 7-7 7" /></svg>
+                  )}
+                </button>
+              </div>
+
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+
+              {speechError && (
+                <div className="absolute bottom-full left-10 mb-2 bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap z-50 animate-fade-in-down font-bold">
+                  ⚠️ {speechError}
+                </div>
+              )}
             </div>
-            <p className="text-center text-[10px] text-gray-500 mt-3 font-medium">AI can make mistakes. Verify important information.</p>
+            <p className="text-center text-[10px] text-gray-500 mt-2 font-medium">EIVA can make mistakes. Consider checking important information.</p>
           </div>
         </div>
       </main>

@@ -7,7 +7,7 @@ interface LoginPageProps {
   onGuestLogin?: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onGuestLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGuestLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -23,7 +23,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onGuestLogin }) => {
     setLoading(true);
     setError(null);
 
-    // Timeout safety
+    // Timeout safety - Force stop loading after 15 seconds if nothing happens
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        setError("Request timed out. Please check your internet connection or try again.");
+        console.error("LoginPage: Login timed out after 15s");
+      }
+    }, 15000);
+
     try {
       if (isSignUp) {
         console.log("LoginPage: Attempting sign up with", email);
@@ -43,32 +51,26 @@ const LoginPage: React.FC<LoginPageProps> = ({ onGuestLogin }) => {
         console.log("LoginPage: Attempting login with", email);
         await loginWithEmail(email, password);
         console.log("LoginPage: Login successful for", email);
-        // If login is successful, call onLogin to navigate away
-        // This assumes loginWithEmail handles session and redirects if needed,
-        // or that onLogin() will check the session.
-      }
-      // If we reach here, either signup or login was successful.
-      // If it was a login, we should call onLogin.
-      // If it was a signup, we just switched to login mode.
-      // The actual onLogin call should happen based on session changes,
-      // which are typically handled by an AuthProvider or similar.
-      // For this specific component, if login is successful, we call onLogin.
-      if (!isSignUp) { // Only call onLogin if it was an actual login attempt
-        // The original code had onLogin() called implicitly by the parent component
-        // reacting to auth state changes. Let's keep that pattern.
-        // If the component needs to explicitly trigger a navigation, onLogin() would be here.
-        // For now, let's assume the parent handles navigation based on auth state.
+
+        // Explicitly trigger navigation on success
+        console.log("LoginPage: Auth successful, triggering navigation.");
+        onLogin();
       }
     } catch (err: any) {
-      console.error("LoginPage: Auth error:", err);
-      let errorMessage = "Authentication failed.";
+      console.error("LoginPage: Auth error full object:", err);
+      let errorMessage = "Authentication failed. Please try again.";
+
       if (err.message) {
         errorMessage = err.message;
+        if (err.message.includes("fetch")) errorMessage = "Network error. Please check your connection.";
+        if (err.message.includes("Invalid login credentials")) errorMessage = "Invalid email or password.";
       } else if (err.error_description) {
         errorMessage = err.error_description;
       }
+
       setError(errorMessage);
     } finally {
+      clearTimeout(timeoutId);
       console.log("LoginPage: Auth process finished.");
       setLoading(false);
     }
@@ -79,7 +81,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onGuestLogin }) => {
     setError(null);
     try {
       await loginWithGoogle();
-      // Redirect happens automatically via Supabase
+      // Redirect happens automatically via Supabase, but if not:
+      onLogin();
     } catch (err: any) {
       console.error("Google login error:", err);
       setError("Google Login failed. This usually happens if the redirect URL is not whitelisted or third-party cookies are blocked.");

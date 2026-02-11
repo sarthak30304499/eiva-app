@@ -8,9 +8,12 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
 }
 
-/* Galaxy Theme */
+/* Galaxy Theme - Professional Deep Space */
 .galaxy-bg {
-    background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+    background: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    /* Deeper, richer blue/black */
+    background: radial-gradient(ellipse at bottom, #0F172A 0%, #000000 100%);
+    /* Alternative: Deep Slate to Black */
     overflow: hidden;
     position: relative;
 }

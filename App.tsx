@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User, Question, Comment, ViewState, Space, SearchFilter, AppMode } from './types';
 import { generateAIAnswer, ImagePart } from './services/geminiService';
+import { supabase } from './supabaseClient';
 import {
   listenToAuth,
   listenToPosts,
@@ -292,7 +293,18 @@ const App: React.FC = () => {
     setAppMode('choice');
   };
 
-  if (!currentUser) return <LoginPage onLogin={() => { }} onGuestLogin={handleGuestLogin} />;
+  if (!currentUser) return <LoginPage onLogin={() => {
+    // Force a re-check of auth state immediately
+    setIsAuthChecking(true);
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        refreshSelf(data.user.id);
+        setAppMode('choice');
+      } else {
+        setIsAuthChecking(false);
+      }
+    });
+  }} onGuestLogin={handleGuestLogin} />;
 
   if (appMode === 'choice') {
     return <ModeSelector user={currentUser} onSelect={setAppMode} />;
