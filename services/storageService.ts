@@ -338,3 +338,60 @@ export const getSpacesList = async () => {
   }
   return spaces.map(s => ({ ...s, icon: '🚀', members: [] }));
 };
+
+// --- Chat Functions ---
+
+export const sendMessage = async (receiverId: string, content: string) => {
+  const { error } = await supabase.from('messages').insert({
+    sender_id: (await supabase.auth.getUser()).data.user?.id,
+    receiver_id: receiverId,
+    content: content
+  });
+  if (error) {
+    console.error("Error sending message:", error);
+    throw error;
+  }
+};
+
+export const fetchMessages = async (contactId: string): Promise<import('../types').Message[]> => {
+  const myId = (await supabase.auth.getUser()).data.user?.id;
+  if (!myId) return [];
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .or(`and(sender_id.eq.${myId},receiver_id.eq.${contactId}),and(sender_id.eq.${contactId},receiver_id.eq.${myId})`)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error("Error fetching messages:", error);
+    return [];
+  }
+
+  return data.map((m: any) => ({
+    id: m.id,
+    senderId: m.sender_id,
+    receiverId: m.receiver_id,
+    content: m.content,
+    createdAt: m.created_at
+  }));
+};
+
+export const listenToMessages = (callback: () => void) => {
+  const channel = supabase.channel('messages-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, callback)
+    .subscribe();
+  return () => supabase.removeChannel(channel);
+};
+
+export const searchUsers = async (query: string): Promise<User[]> => {
+  if (!query) return [];
+  const { data } = await supabase
+    .from('users')
+    .select('*')
+    .ilike('username', `%${query}%`)
+    .limit(20);
+
+  if (!data) return [];
+  return data.map((u: any) => mapUser(u));
+};

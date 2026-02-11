@@ -17,19 +17,19 @@ interface NavbarProps {
   toggleTheme: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ 
-  user, 
-  currentView, 
+const Navbar: React.FC<NavbarProps> = ({
+  user,
+  currentView,
   appMode,
   searchFilter,
   voiceMode,
-  onLogout, 
-  onSearch, 
-  onNavigate, 
+  onLogout,
+  onSearch,
+  onNavigate,
   onSwitchMode,
   onToggleVoiceMode,
-  isDarkMode, 
-  toggleTheme 
+  isDarkMode,
+  toggleTheme
 }) => {
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<SearchFilter>(searchFilter);
@@ -46,10 +46,9 @@ const Navbar: React.FC<NavbarProps> = ({
     onNavigate('search');
   };
 
-  const navClass = (view: ViewState) => 
-    `px-3 py-2 text-sm font-bold transition-all border-b-2 ${
-      currentView === view 
-      ? 'text-[#6C63FF] border-[#6C63FF]' 
+  const navClass = (view: ViewState) =>
+    `px-3 py-2 text-sm font-bold transition-all border-b-2 ${currentView === view
+      ? 'text-[#6C63FF] border-[#6C63FF]'
       : 'text-gray-400 dark:text-gray-500 border-transparent hover:text-gray-800'
     }`;
 
@@ -57,13 +56,13 @@ const Navbar: React.FC<NavbarProps> = ({
     <nav className="bg-white dark:bg-gray-900 border-b dark:border-gray-800 sticky top-0 z-50 px-4 transition-colors">
       <div className="max-w-5xl mx-auto flex items-center justify-between h-14">
         <div className="flex items-center space-x-6">
-          <button 
-            onClick={() => { setQuery(''); onNavigate('home'); }} 
+          <button
+            onClick={() => { setQuery(''); onNavigate('home'); }}
             className="text-xl font-black text-[#6C63FF] italic tracking-tighter"
           >
             EIVA
           </button>
-          
+
           <div className="hidden md:flex space-x-1">
             <button onClick={() => onNavigate('home')} className={navClass('home')}>Feed</button>
             <button onClick={() => onNavigate('following')} className={navClass('following')}>Following</button>
@@ -89,18 +88,18 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         <div className="flex items-center space-x-4">
-          <button 
+          <button
             onClick={onToggleVoiceMode}
             className={`hidden lg:flex items-center space-x-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${voiceMode ? 'bg-[#6C63FF] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}
           >
             <span>Voice Mode: {voiceMode ? 'ON' : 'OFF'}</span>
           </button>
 
-          <button 
-            onClick={() => onSwitchMode(appMode === 'ai' ? 'community' : 'ai')}
+          <button
+            onClick={() => onSwitchMode(appMode === 'ai' ? 'chat' : 'ai')}
             className="hidden sm:flex items-center space-x-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-[#6C63FF] hover:text-white transition-all"
           >
-            <span>{appMode === 'ai' ? '👥 Community' : '✨ EIVA AI'}</span>
+            <span>{appMode === 'ai' ? '💬 Eiva Chat' : '✨ EIVA AI'}</span>
           </button>
 
           <button onClick={toggleTheme} className="text-gray-400 hover:text-gray-600">
@@ -108,7 +107,7 @@ const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {user && (
-            <button 
+            <button
               onClick={() => onNavigate('profile')}
               className={`w-8 h-8 rounded-full border-2 ${currentView === 'profile' ? 'border-[#6C63FF]' : 'border-transparent'}`}
             >

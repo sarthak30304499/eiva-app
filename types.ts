@@ -48,7 +48,7 @@ export interface Space {
 
 export type SearchFilter = 'all' | 'people' | 'questions' | 'spaces';
 
-export type AppMode = 'choice' | 'ai' | 'community' | 'browser' | 'call';
+export type AppMode = 'choice' | 'ai' | 'chat' | 'browser' | 'call';
 
 export type ViewState = 'home' | 'following' | 'answers' | 'spaces' | 'profile' | 'search' | 'space-detail' | 'user-list' | 'user-profile' | 'mode-selector' | 'ai-chat';
 
@@ -60,4 +60,12 @@ export interface ChatMessage {
   timestamp: string;
   // Added sources for grounding
   sources?: any[];
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  createdAt: string;
 }

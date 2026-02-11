@@ -29,6 +29,7 @@ import ModeSelector from './components/ModeSelector';
 import AIChat from './components/AIChat';
 import CallInterface from './components/CallInterface';
 import Browser from './components/Browser';
+import UserChat from './components/UserChat';
 
 // ... (existing imports)
 
@@ -330,6 +331,10 @@ const App: React.FC = () => {
 
   if (appMode === 'call') {
     return <CallInterface user={currentUser} onEndCall={() => setAppMode('choice')} />;
+  }
+
+  if (appMode === 'chat') {
+    return <UserChat currentUser={currentUser} onReturnToChoice={() => setAppMode('choice')} />;
   }
 
   const displayQuestions = getFilteredQuestions();
