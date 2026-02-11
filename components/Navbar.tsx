@@ -88,12 +88,7 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         <div className="flex items-center space-x-4">
-          <button
-            onClick={onToggleVoiceMode}
-            className={`hidden lg:flex items-center space-x-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${voiceMode ? 'bg-[#6C63FF] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}
-          >
-            <span>Voice Mode: {voiceMode ? 'ON' : 'OFF'}</span>
-          </button>
+
 
           <button
             onClick={() => onSwitchMode(appMode === 'ai' ? 'chat' : 'ai')}
