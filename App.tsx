@@ -26,7 +26,7 @@ import AskQuestion from './components/AskQuestion';
 import LoginPage from './components/LoginPage';
 import ModeSelector from './components/ModeSelector';
 import AIChat from './components/AIChat';
-import CallInterface from './components/CallInterface';
+// import CallInterface from './components/CallInterface'; // Removed
 import Browser from './components/Browser';
 import UserChat from './components/UserChat';
 
@@ -326,9 +326,7 @@ const App: React.FC = () => {
     return <Browser user={currentUser} onReturnToChoice={() => setAppMode('choice')} />;
   }
 
-  if (appMode === 'call') {
-    return <CallInterface user={currentUser} onEndCall={() => setAppMode('choice')} />;
-  }
+
 
   if (appMode === 'chat') {
     return <UserChat currentUser={currentUser} onReturnToChoice={() => setAppMode('choice')} />;
