@@ -24,24 +24,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onGuestLogin }) => {
     setError(null);
 
     // Timeout safety
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Request timed out. Please check your network or try again.")), 10000)
-    );
-
     try {
       if (isSignUp) {
         console.log("LoginPage: Attempting sign up with", email);
-        const user = await Promise.race([
-          signUpWithEmail(email, password),
-          timeoutPromise
-        ]);
+        const user = await signUpWithEmail(email, password);
         console.log("LoginPage: Sign up successful", user);
       } else {
         console.log("LoginPage: Attempting login with", email);
-        const user = await Promise.race([
-          loginWithEmail(email, password),
-          timeoutPromise
-        ]);
+        const user = await loginWithEmail(email, password);
         console.log("LoginPage: Login successful", user);
       }
     } catch (err: any) {
