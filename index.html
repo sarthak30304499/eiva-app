@@ -29,6 +29,10 @@
       }
     });
     window.addEventListener('unhandledrejection', function (event) {
+      // Ignore AbortError (common in fetches and navigation)
+      if (event.reason && (event.reason.name === 'AbortError' || event.reason.message?.includes('aborted'))) {
+        return;
+      }
       var display = document.getElementById('error-display');
       if (display) {
         display.style.display = 'block';
