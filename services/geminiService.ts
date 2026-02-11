@@ -13,9 +13,18 @@ export const generateAIAnswer = async (
   prompt: string,
   imagePart?: ImagePart
 ): Promise<AIResponse> => {
-  const ai = getAI();
-
   try {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      return { text: "Configuration Error: API Key is missing. Please check your deployment settings.", agentName: "System" };
+    }
+    if (!apiKey.startsWith("AIza")) {
+      // Warn but don't block, in case format changed, but it denotes a likely issue.
+      console.warn("API Key does not start with AIza. It might be invalid.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
     const contents = imagePart
       ? { parts: [imagePart, { text: prompt }] }
       : { parts: [{ text: prompt }] };
@@ -31,19 +40,23 @@ export const generateAIAnswer = async (
 
     return {
       text: response.text || "I'm sorry, I couldn't generate an answer for that.",
-      agentName: 'EIVA', // Default name
+      agentName: 'EIVA',
       sources: []
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Gen Error:", error);
-    return { text: "Transmission error. Please try again later.", agentName: "System Error" };
+    const errorMessage = error.message || "Unknown error";
+    return { text: `Connection Failed: ${errorMessage}`, agentName: "System Error" };
   }
 };
 
 // Professional Speech Generation (TTS)
 export const generateSpeech = async (text: string): Promise<string | undefined> => {
-  const ai = getAI();
   try {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) return undefined;
+
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash-exp",
       contents: [{ parts: [{ text }] }],
