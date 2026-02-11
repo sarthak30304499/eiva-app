@@ -29,16 +29,32 @@
       }
     });
     window.addEventListener('unhandledrejection', function (event) {
+      // Robust error extraction
       var reason = event.reason;
-      var msg = reason instanceof Error ? reason.message : String(reason);
-      var name = reason instanceof Error ? reason.name : '';
+      var msg = '';
+      var name = '';
+
+      try {
+        if (reason) {
+          if (typeof reason === 'string') {
+            msg = reason;
+          } else if (typeof reason === 'object') {
+            msg = reason.message || String(reason);
+            name = reason.name || '';
+          }
+        }
+      } catch (e) {
+        msg = String(reason);
+      }
 
       // Aggressively ignore AbortErrors and common noise
+      // convert to lower case for case-insensitive matching
+      var lowerMsg = (msg || '').toLowerCase();
+
       if (
         name === 'AbortError' ||
-        msg.includes('Aborted') ||
-        msg.includes('aborted') ||
-        msg.includes('signal is aborted')
+        lowerMsg.includes('abort') ||
+        lowerMsg.includes('signal is aborted')
       ) {
         return;
       }
@@ -46,7 +62,7 @@
       var display = document.getElementById('error-display');
       if (display) {
         display.style.display = 'block';
-        display.textContent += 'Unhandled Rejection: ' + msg + '\n\n';
+        display.textContent += 'Error: ' + msg + '\n\n';
       }
     });
   </script>
