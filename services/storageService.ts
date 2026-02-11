@@ -63,15 +63,17 @@ export const logout = () => supabase.auth.signOut();
 export const fetchUserProfile = async (uid: string): Promise<User | null> => {
   console.log("storageService: fetchUserProfile start", uid);
   try {
-    // Failsafe: timeout after 5 seconds
     const dbPromise = supabase.from('users').select('*').eq('id', uid).single();
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('DB_TIMEOUT')), 5000)
     );
 
-    const { data: profile, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
+    // Explicitly cast the result to avoid parser confusion
+    const result = await Promise.race([dbPromise, timeoutPromise]);
+    const { data: profile, error } = result as any;
 
     if (error) {
+      // Code 'PGRST116' is Supabase for "Row not found" (when .single() is used)
       if (error.code === 'PGRST116') {
         console.log("storageService: fetchUserProfile - User not found in DB");
         return null;
@@ -85,14 +87,10 @@ export const fetchUserProfile = async (uid: string): Promise<User | null> => {
       return null;
     }
 
-    // Parallelize these fetches for speed and isolation
     const [followingRes, followersRes] = await Promise.all([
       supabase.from('follows').select('following_id').eq('follower_id', uid),
       supabase.from('follows').select('follower_id').eq('following_id', uid)
     ]);
-
-    if (followingRes.error) console.error("storageService: Error fetching following", followingRes.error);
-    if (followersRes.error) console.error("storageService: Error fetching followers", followersRes.error);
 
     const following = followingRes.data?.map(f => f.following_id) || [];
     const followers = followersRes.data?.map(f => f.follower_id) || [];
