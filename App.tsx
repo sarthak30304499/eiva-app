@@ -7,7 +7,6 @@ import {
   listenToPosts,
   listenToFollows,
   listenToUsers,
-  initializeSystemAccount,
   createPost,
   updatePostAIAnswer,
   uploadPostImage,
@@ -86,8 +85,6 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    initializeSystemAccount();
-
     const unsubAuth = listenToAuth((user) => {
       console.log("App.tsx: Auth state changed. User:", user ? user.id : "null");
       setLocalUser(user);

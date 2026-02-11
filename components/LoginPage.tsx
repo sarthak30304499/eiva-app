@@ -22,19 +22,31 @@ const LoginPage: React.FC<LoginPageProps> = ({ onGuestLogin }) => {
     console.log("LoginPage: handleSubmit called", { email, isSignUp });
     setLoading(true);
     setError(null);
+
+    // Timeout safety
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timed out. Please check your network or try again.")), 10000)
+    );
+
     try {
       if (isSignUp) {
         console.log("LoginPage: Attempting sign up with", email);
-        const user = await signUpWithEmail(email, password);
+        const user = await Promise.race([
+          signUpWithEmail(email, password),
+          timeoutPromise
+        ]);
         console.log("LoginPage: Sign up successful", user);
       } else {
         console.log("LoginPage: Attempting login with", email);
-        const user = await loginWithEmail(email, password);
+        const user = await Promise.race([
+          loginWithEmail(email, password),
+          timeoutPromise
+        ]);
         console.log("LoginPage: Login successful", user);
       }
     } catch (err: any) {
       console.error("LoginPage: Auth error", err);
-      setError(err.message || "Authentication failed. Please check your credentials.");
+      setError(err.message || "Authentication failed.");
     } finally {
       console.log("LoginPage: Loading set to false");
       setLoading(false);
@@ -69,7 +81,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onGuestLogin }) => {
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl text-xs font-bold animate-slide-up">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl text-xs font-bold animate-slide-up whitespace-pre-line">
               {error}
             </div>
           )}

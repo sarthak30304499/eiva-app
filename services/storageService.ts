@@ -64,13 +64,9 @@ export const fetchUserProfile = async (uid: string): Promise<User | null> => {
   console.log("storageService: fetchUserProfile start", uid);
   try {
     const dbPromise = supabase.from('users').select('*').eq('id', uid).single();
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('DB_TIMEOUT')), 15000)
-    );
 
-    // Explicitly cast the result to avoid parser confusion
-    const result = await Promise.race([dbPromise, timeoutPromise]);
-    const { data: profile, error } = result as any;
+    // Deep Fix: Await directly, relying on Supabase client's internal handling
+    const { data: profile, error } = await dbPromise;
 
     if (error) {
       // Code 'PGRST116' is Supabase for "Row not found" (when .single() is used)
@@ -87,18 +83,27 @@ export const fetchUserProfile = async (uid: string): Promise<User | null> => {
       return null;
     }
 
-    const [followingRes, followersRes] = await Promise.all([
-      supabase.from('follows').select('following_id').eq('follower_id', uid),
-      supabase.from('follows').select('follower_id').eq('following_id', uid)
-    ]);
+    let following: string[] = [];
+    let followers: string[] = [];
 
-    const following = followingRes.data?.map(f => f.following_id) || [];
-    const followers = followersRes.data?.map(f => f.follower_id) || [];
+    // Separate try-catch for follows to prevent crashing if table/RLS issues exist
+    try {
+      const [followingRes, followersRes] = await Promise.all([
+        supabase.from('follows').select('following_id').eq('follower_id', uid),
+        supabase.from('follows').select('follower_id').eq('following_id', uid)
+      ]);
+      following = followingRes.data?.map(f => f.following_id) || [];
+      followers = followersRes.data?.map(f => f.follower_id) || [];
+    } catch (followErr) {
+      console.warn("storageService: Error fetching follows (non-critical)", followErr);
+    }
 
     console.log("storageService: fetchUserProfile success", { id: profile.id });
     return mapUser(profile, following, followers);
   } catch (err) {
     console.error("storageService: fetchUserProfile CRITICAL ERROR", err);
+    // Fallback: If we have the ID, try to return a basic user object to allow login?
+    // Not possible here as we don't have the profile data if the first query failed.
     return null;
   }
 };
@@ -120,11 +125,16 @@ const initializeUserData = async (uid: string, email: string) => {
       throw error;
     }
 
-    await initializeSystemAccount();
-    await supabase.from('follows').insert({
-      follower_id: uid,
-      following_id: SYSTEM_EIVA_ID
-    });
+    // Try to auto-follow EIVA, but ignore if it fails (e.g. system user missing)
+    try {
+      await supabase.from('follows').insert({
+        follower_id: uid,
+        following_id: SYSTEM_EIVA_ID
+      });
+    } catch (followErr) {
+      console.warn("storageService: Could not auto-follow EIVA (non-critical)", followErr);
+    }
+
     console.log("storageService: initializeUserData complete");
   } catch (err) {
     console.error("storageService: initializeUserData CRITICAL ERROR", err);
@@ -146,7 +156,25 @@ export const listenToAuth = (callback: (user: User | null) => void) => {
           console.log("storageService: Profile not found, initializing data");
           await initializeUserData(session.user.id, session.user.email || '');
           const newProfile = await fetchUserProfile(session.user.id);
-          callback(newProfile || null); // Ensure we don't pass undefined
+          if (newProfile) {
+            callback(newProfile);
+          } else {
+            console.warn("storageService: Using Fallback User due to DB failure");
+            // Fallback user from session data
+            const fallback: User = {
+              id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.email?.split('@')[0] || 'Guest',
+              username: session.user.email?.split('@')[0] || 'guest',
+              bio: 'Temporary Profile (Database Unavailable)',
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.id}`,
+              joinedAt: new Date().toISOString(),
+              following: [],
+              followers: [],
+              isVerified: false
+            };
+            callback(fallback);
+          }
         }
       } else {
         console.log("storageService: No session user, callback null");
@@ -160,16 +188,7 @@ export const listenToAuth = (callback: (user: User | null) => void) => {
   return () => subscription.unsubscribe();
 };
 
-export const initializeSystemAccount = async () => {
-  await supabase.from('users').upsert({
-    id: SYSTEM_EIVA_ID,
-    username: 'eiva.ai',
-    name: 'EIVA',
-    bio: 'Official AI account of EIVA — helping you learn, ask, and grow.',
-    profile_pic: 'https://api.dicebear.com/7.x/bottts/svg?seed=EIVA',
-    email: 'contact@eiva.ai'
-  });
-};
+// initializeSystemAccount removed - handled via SQL
 
 export const uploadPostImage = async (file: File, postId: string): Promise<string | null> => {
   const fileExt = file.name.split('.').pop();
