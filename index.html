@@ -29,14 +29,24 @@
       }
     });
     window.addEventListener('unhandledrejection', function (event) {
-      // Ignore AbortError (common in fetches and navigation)
-      if (event.reason && (event.reason.name === 'AbortError' || event.reason.message?.includes('aborted'))) {
+      var reason = event.reason;
+      var msg = reason instanceof Error ? reason.message : String(reason);
+      var name = reason instanceof Error ? reason.name : '';
+
+      // Aggressively ignore AbortErrors and common noise
+      if (
+        name === 'AbortError' ||
+        msg.includes('Aborted') ||
+        msg.includes('aborted') ||
+        msg.includes('signal is aborted')
+      ) {
         return;
       }
+
       var display = document.getElementById('error-display');
       if (display) {
         display.style.display = 'block';
-        display.textContent += 'Unhandled Rejection: ' + event.reason + '\n\n';
+        display.textContent += 'Unhandled Rejection: ' + msg + '\n\n';
       }
     });
   </script>
