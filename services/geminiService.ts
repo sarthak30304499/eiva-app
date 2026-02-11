@@ -39,7 +39,7 @@ const determineAgent = async (prompt: string): Promise<Agent> => {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash", // Fast model for routing
+      model: "gemini-1.5-flash", // Stable model for routing
       contents: [{ parts: [{ text: routerPrompt }] }],
     });
 
@@ -76,7 +76,7 @@ export const generateAIAnswer = async (
     const tools = selectedAgent.supportsSearch ? [{ googleSearch: {} }] : [];
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash", // Use 2.0 Flash for speed and search capabilities
+      model: "gemini-1.5-flash", // Use 1.5 Flash for speed and stability
       contents,
       tools: tools as any, // Cast to any to avoid strict type issues with googleSearch
       config: {
