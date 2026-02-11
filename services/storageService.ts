@@ -61,49 +61,95 @@ export const loginWithGoogle = async () => {
 export const logout = () => supabase.auth.signOut();
 
 export const fetchUserProfile = async (uid: string): Promise<User | null> => {
-  const { data: profile } = await supabase.from('users').select('*').eq('id', uid).single();
-  if (!profile) return null;
-  const { data: fng } = await supabase.from('follows').select('following_id').eq('follower_id', uid);
-  const { data: fers } = await supabase.from('follows').select('follower_id').eq('following_id', uid);
-  return mapUser(profile, fng?.map(f => f.following_id), fers?.map(f => f.follower_id));
+  console.log("storageService: fetchUserProfile start", uid);
+  try {
+    const { data: profile, error } = await supabase.from('users').select('*').eq('id', uid).single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log("storageService: fetchUserProfile - User not found in DB");
+        return null;
+      }
+      console.error("storageService: fetchUserProfile error fetching user", error);
+      return null;
+    }
+
+    if (!profile) {
+      console.log("storageService: fetchUserProfile - Profile is null/undefined");
+      return null;
+    }
+
+    // Parallelize these fetches for speed and isolation
+    const [followingRes, followersRes] = await Promise.all([
+      supabase.from('follows').select('following_id').eq('follower_id', uid),
+      supabase.from('follows').select('follower_id').eq('following_id', uid)
+    ]);
+
+    if (followingRes.error) console.error("storageService: Error fetching following", followingRes.error);
+    if (followersRes.error) console.error("storageService: Error fetching followers", followersRes.error);
+
+    const following = followingRes.data?.map(f => f.following_id) || [];
+    const followers = followersRes.data?.map(f => f.follower_id) || [];
+
+    console.log("storageService: fetchUserProfile success", { id: profile.id });
+    return mapUser(profile, following, followers);
+  } catch (err) {
+    console.error("storageService: fetchUserProfile CRITICAL ERROR", err);
+    return null;
+  }
 };
 
 const initializeUserData = async (uid: string, email: string) => {
+  console.log("storageService: initializeUserData called for", uid);
   const username = email.split('@')[0].toLowerCase() + Math.floor(Math.random() * 1000);
-  await supabase.from('users').upsert({
-    id: uid,
-    name: username.charAt(0).toUpperCase() + username.slice(1),
-    username: username,
-    email: email,
-    profile_pic: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-    created_at: new Date().toISOString()
-  });
+  try {
+    const { error } = await supabase.from('users').upsert({
+      id: uid,
+      name: username.charAt(0).toUpperCase() + username.slice(1),
+      username: username,
+      email: email,
+      profile_pic: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+      created_at: new Date().toISOString()
+    });
+    if (error) {
+      console.error("storageService: initializeUserData upsert error", error);
+      throw error;
+    }
 
-  await initializeSystemAccount();
-  await supabase.from('follows').insert({
-    follower_id: uid,
-    following_id: SYSTEM_EIVA_ID
-  });
+    await initializeSystemAccount();
+    await supabase.from('follows').insert({
+      follower_id: uid,
+      following_id: SYSTEM_EIVA_ID
+    });
+    console.log("storageService: initializeUserData complete");
+  } catch (err) {
+    console.error("storageService: initializeUserData CRITICAL ERROR", err);
+  }
 };
 
 export const listenToAuth = (callback: (user: User | null) => void) => {
   console.log("storageService: Setting up auth listener");
   const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
     console.log("storageService: Auth event:", event, "Session exists:", !!session);
-    if (session?.user) {
-      console.log("storageService: Fetching profile for", session.user.id);
-      const profile = await fetchUserProfile(session.user.id);
-      if (profile) {
-        console.log("storageService: Profile found");
-        callback(profile);
+    try {
+      if (session?.user) {
+        console.log("storageService: Fetching profile for", session.user.id);
+        const profile = await fetchUserProfile(session.user.id);
+        if (profile) {
+          console.log("storageService: Profile found");
+          callback(profile);
+        } else {
+          console.log("storageService: Profile not found, initializing data");
+          await initializeUserData(session.user.id, session.user.email || '');
+          const newProfile = await fetchUserProfile(session.user.id);
+          callback(newProfile || null); // Ensure we don't pass undefined
+        }
       } else {
-        console.log("storageService: Profile not found, initializing data");
-        await initializeUserData(session.user.id, session.user.email || '');
-        const newProfile = await fetchUserProfile(session.user.id);
-        callback(newProfile);
+        console.log("storageService: No session user, callback null");
+        callback(null);
       }
-    } else {
-      console.log("storageService: No session user, callback null");
+    } catch (err) {
+      console.error("storageService: listenToAuth CRITICAL ERROR in callback", err);
       callback(null);
     }
   });
