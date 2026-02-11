@@ -2,6 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, ChatMessage } from '../types';
 import { generateAIAnswer, ImagePart, generateSpeech, decodeAudioData } from '../services/geminiService';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface AIChatProps {
   user: User;
@@ -175,7 +177,6 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
         role: 'model',
         parts: [{ text: response.text }],
         timestamp: new Date().toISOString(),
-        agentName: response.agentName,
         sources: response.sources
       };
       setMessages(prev => [...prev, aiMsg]);
@@ -189,8 +190,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
         id: 'err',
         role: 'model',
         parts: [{ text: "Error connecting to EIVA intelligence. Please check your network." }],
-        timestamp: new Date().toISOString(),
-        agentName: 'System Error'
+        timestamp: new Date().toISOString()
       }]);
     } finally {
       setIsLoading(false);
@@ -228,7 +228,17 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
                       {part.inlineData && (
                         <img src={`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`} className="rounded-lg max-h-60 object-cover border dark:border-gray-600" />
                       )}
-                      {part.text && <div className="text-sm leading-relaxed">{part.text}</div>}
+                      {part.text && (
+                        <div className={`text-sm leading-relaxed ${msg.role === 'model' ? 'prose dark:prose-invert prose-p:my-1 prose-h3:text-sm prose-h3:font-bold prose-code:text-xs prose-pre:bg-gray-800 prose-pre:p-2 prose-pre:rounded-lg' : ''}`}>
+                          {msg.role === 'model' ? (
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {part.text}
+                            </ReactMarkdown>
+                          ) : (
+                            part.text
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
 

@@ -59,8 +59,8 @@ export interface ChatMessage {
   parts: { text?: string; inlineData?: { data: string; mimeType: string } }[];
   timestamp: string;
   // Added sources for grounding
+  // Added sources for grounding
   sources?: any[];
-  agentName?: string;
 }
 
 export interface Message {
