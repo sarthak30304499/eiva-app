@@ -73,15 +73,21 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
     setSpeechError(null);
     if (isListening) {
       recognitionRef.current?.stop();
+      setIsListening(false);
     } else {
       if (recognitionRef.current) {
         try {
-          setIsListening(true);
           recognitionRef.current.start();
-        } catch (e) {
-          console.error("Start listening error:", e);
-          setIsListening(false);
-          setSpeechError("Could not start microphone.");
+          setIsListening(true);
+        } catch (e: any) {
+          if (e.name === 'InvalidStateError' || e.message?.includes('already started')) {
+            console.log("AIChat: Recognition already active");
+            setIsListening(true);
+          } else {
+            console.error("Start listening error:", e);
+            setIsListening(false);
+            setSpeechError("Could not start microphone.");
+          }
         }
       } else {
         alert("Speech Recognition is not supported in this browser. Please use Chrome.");

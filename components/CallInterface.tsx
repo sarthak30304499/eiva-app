@@ -88,14 +88,20 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ user, onEndCall }) => {
     // Start listening loop
     const startListening = () => {
         setErrorMessage(null);
-        if (recognitionRef.current && status === 'idle') {
+        if (recognitionRef.current) {
             try {
                 recognitionRef.current.start();
-            } catch (e) {
-                console.error("Error starting recognition:", e);
-                setErrorMessage("Could not start microphone.");
+            } catch (e: any) {
+                // If it's already started, that's fine, just sync state
+                if (e.name === 'InvalidStateError' || e.message?.includes('already started')) {
+                    console.log("Recognition already active");
+                    setStatus('listening');
+                } else {
+                    console.error("Error starting recognition:", e);
+                    setErrorMessage("Could not start microphone.");
+                }
             }
-        } else if (!recognitionRef.current) {
+        } else {
             alert("Speech Recognition not initialized. Are you using Chrome?");
         }
     };
