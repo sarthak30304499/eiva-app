@@ -60,6 +60,7 @@ export interface ChatMessage {
   timestamp: string;
   // Added sources for grounding
   sources?: any[];
+  agentName?: string;
 }
 
 export interface Message {
