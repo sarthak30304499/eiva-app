@@ -1,0 +1,28 @@
+{
+  "name": "copy-of-eiva---ai-powered-q&a-community",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/genai": "^1.40.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.24",
+    "dotenv": "^17.2.4",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.8.2",
+    "vite": "^5.4.21"
+  }
+}

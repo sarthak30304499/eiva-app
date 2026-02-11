@@ -1,0 +1,8 @@
+{
+  "name": "Copy of EIVA - AI-Powered Q&A Community",
+  "description": "A social Q&A platform like Quora powered by Gemini AI, allowing users to ask questions, get instant AI answers, and engage with the community.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
