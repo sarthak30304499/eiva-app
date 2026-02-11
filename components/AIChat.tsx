@@ -198,65 +198,101 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
   };
 
   return (
-    <div className="flex h-[calc(100vh-56px)] bg-gray-50 dark:bg-gray-950 overflow-hidden font-['Plus_Jakarta_Sans']">
-      <main className="flex-1 flex flex-col relative max-w-4xl mx-auto w-full bg-white dark:bg-gray-900 shadow-xl">
-        <header className="px-6 py-4 border-b dark:border-gray-800 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">✨</span>
-            <h2 className="text-sm font-black uppercase tracking-widest text-gray-800 dark:text-gray-200">EIVA Chat Station</h2>
+    <div className="flex h-[calc(100vh-56px)] galaxy-bg relative overflow-hidden font-['Plus_Jakarta_Sans']">
+      <div className="stars"></div>
+
+      {/* Optional: Planets for extra depth */}
+      <div className="absolute top-20 -left-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-20 -right-20 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+
+      <main className="flex-1 flex flex-col relative max-w-5xl mx-auto w-full z-10">
+        <header className="px-6 py-4 border-b border-white/10 bg-black/20 backdrop-blur-md flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#6C63FF] to-[#00C6FF] flex items-center justify-center shadow-lg shadow-purple-500/30">
+              <span className="text-xl">✨</span>
+            </div>
+            <div>
+              <h2 className="text-base font-black uppercase tracking-widest text-white">EIVA Intelligence</h2>
+              <p className="text-[10px] text-blue-200 font-bold tracking-wider uppercase">Online & Ready</p>
+            </div>
           </div>
-          <button onClick={onReturnToChoice} className="text-xs font-bold text-[#6C63FF] hover:underline">Change Mode</button>
+          <button
+            onClick={onReturnToChoice}
+            className="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all backdrop-blur-sm"
+          >
+            Exit Module
+          </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 scrollbar-hide">
           {messages.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center opacity-30">
-              <span className="text-6xl mb-4">🚀</span>
-              <p className="font-bold text-sm tracking-widest uppercase">Awaiting Transmission</p>
+            <div className="h-full flex flex-col items-center justify-center opacity-60 animate-fade-in">
+              <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-6 floating backdrop-blur-sm border border-white/10">
+                <span className="text-5xl">🌌</span>
+              </div>
+              <h3 className="text-2xl font-black text-white mb-2 tracking-tight">EIVA ONLINE</h3>
+              <p className="text-blue-200 font-medium text-sm tracking-widest uppercase">Awaiting Transmission...</p>
             </div>
           )}
 
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
-              <div className={`max-w-[85%] md:max-w-[70%] space-y-1`}>
-                <div className={`p-4 rounded-2xl relative group/msg ${msg.role === 'user'
-                  ? 'bg-[#6C63FF] text-white shadow-lg'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border dark:border-gray-700'
-                  }`}>
-                  {msg.parts.map((part, i) => (
-                    <div key={i} className="space-y-2">
-                      {part.inlineData && (
-                        <img src={`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`} className="rounded-lg max-h-60 object-cover border dark:border-gray-600" />
-                      )}
-                      {part.text && (
-                        <div className={`text-sm leading-relaxed ${msg.role === 'model' ? 'prose dark:prose-invert prose-p:my-1 prose-h3:text-sm prose-h3:font-bold prose-code:text-xs prose-pre:bg-gray-800 prose-pre:p-2 prose-pre:rounded-lg' : ''}`}>
-                          {msg.role === 'model' ? (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {part.text}
-                            </ReactMarkdown>
-                          ) : (
-                            part.text
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up group`}>
+              <div className={`max-w-[85%] md:max-w-[70%] flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
 
-                  {msg.role === 'model' && msg.parts[0]?.text && (
-                    <button
-                      onClick={() => handleSpeak(msg.id, msg.parts[0].text!)}
-                      className={`absolute -right-10 top-2 p-1.5 rounded-full shadow-sm transition-all opacity-0 group-hover/msg:opacity-100 ${playingMessageId === msg.id ? 'bg-[#6C63FF] text-white animate-pulse opacity-100' : 'bg-white dark:bg-gray-700 text-[#6C63FF] border dark:border-gray-600'}`}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                      </svg>
-                    </button>
-                  )}
+                {/* Avatar */}
+                <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold border ${msg.role === 'user'
+                    ? 'bg-gradient-to-br from-[#6C63FF] to-[#00C6FF] border-transparent text-white'
+                    : 'bg-black/40 border-white/20 text-white backdrop-blur-md'
+                  }`}>
+                  {msg.role === 'user' ? user.username[0].toUpperCase() : '✨'}
                 </div>
-                <div className={`p-1 mt-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                  <p className="text-[9px] font-bold text-gray-400 uppercase">
-                    {msg.role === 'user' ? user.username : 'EIVA'}
-                  </p>
+
+                <div className="space-y-1">
+                  <div className={`p-5 rounded-2xl relative backdrop-blur-md border ${msg.role === 'user'
+                    ? 'bg-gradient-to-br from-[#6C63FF]/90 to-[#00C6FF]/90 text-white border-white/10 shadow-lg shadow-purple-500/20 rounded-tr-none'
+                    : 'bg-black/40 text-gray-100 border-white/10 shadow-xl rounded-tl-none'
+                    }`}>
+
+                    {msg.parts.map((part, i) => (
+                      <div key={i} className="space-y-3">
+                        {part.inlineData && (
+                          <div className="relative group/image overflow-hidden rounded-lg border border-white/10">
+                            <img src={`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`} className="max-h-64 object-cover w-full transition-transform group-hover/image:scale-105" />
+                          </div>
+                        )}
+                        {part.text && (
+                          <div className={`text-sm leading-7 tracking-wide ${msg.role === 'model'
+                              ? 'prose prose-invert prose-p:my-1 prose-headings:text-white prose-a:text-blue-300 prose-code:text-blue-200 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10'
+                              : 'font-medium'
+                            }`}>
+                            {msg.role === 'model' ? (
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {part.text}
+                              </ReactMarkdown>
+                            ) : (
+                              part.text
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Speak Button for AI */}
+                    {msg.role === 'model' && msg.parts[0]?.text && (
+                      <button
+                        onClick={() => handleSpeak(msg.id, msg.parts[0].text!)}
+                        className={`absolute -right-12 top-0 p-2 rounded-full transition-all opacity-0 group-hover:opacity-100 ${playingMessageId === msg.id ? 'bg-[#6C63FF] text-white animate-pulse opacity-100' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                        title="Read Aloud"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  <div className={`text-[10px] font-bold uppercase tracking-widest opacity-40 text-white ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -264,20 +300,23 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 md:p-8 border-t dark:border-gray-800 bg-white dark:bg-gray-900">
-          <div className="max-w-3xl mx-auto relative">
+        <div className="p-4 md:p-6 pb-8">
+          <div className="max-w-4xl mx-auto relative">
             {previewUrl && (
-              <div className="absolute bottom-full left-0 mb-4 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border dark:border-gray-700 flex items-center space-x-3 animate-slide-up">
-                <img src={previewUrl} className="w-12 h-12 rounded-lg object-cover" />
-                <button onClick={removeFile} className="text-red-500 text-[10px] font-bold uppercase">Discard</button>
+              <div className="absolute bottom-full left-0 mb-4 p-3 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl flex items-center space-x-4 animate-slide-up">
+                <img src={previewUrl} className="w-16 h-16 rounded-lg object-cover border border-white/20" />
+                <div>
+                  <p className="text-xs font-bold text-white mb-1">Image Attached</p>
+                  <button onClick={removeFile} className="text-red-400 text-[10px] font-black uppercase hover:text-red-300 transition-colors">Discard Asset</button>
+                </div>
               </div>
             )}
 
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-2 flex items-center border-2 border-transparent focus-within:border-[#6C63FF] transition-all">
+            <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-2 flex items-center border border-white/10 focus-within:border-white/30 focus-within:bg-white/10 transition-all shadow-2xl shadow-purple-900/20">
               <button
                 onClick={toggleListening}
-                className={`p-3 rounded-full transition-all ${isListening ? 'text-red-500 bg-red-50 dark:bg-red-900/20 animate-pulse' : 'text-gray-400 hover:text-[#6C63FF]'}`}
-                title={isListening ? 'Stop listening' : 'Voice Input'}
+                className={`p-4 rounded-full transition-all ${isListening ? 'bg-red-500/20 text-red-400 animate-pulse' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                title={isListening ? 'Stop listening' : 'Msg via Voice'}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-20a3 3 0 00-3 3v8a3 3 0 006 0V5a3 3 0 00-3-3z" />
@@ -285,37 +324,38 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
               </button>
 
               {speechError && (
-                <div className="absolute bottom-full left-10 mb-2 bg-red-500 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-50 animate-fade-in-down">
+                <div className="absolute bottom-full left-10 mb-2 bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap z-50 animate-fade-in-down font-bold">
                   ⚠️ {speechError}
                 </div>
               )}
 
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-              <button onClick={() => fileInputRef.current?.click()} className="p-3 text-gray-400 hover:text-[#6C63FF]">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              <button onClick={() => fileInputRef.current?.click()} className="p-4 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
               </button>
 
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder={isListening ? "Listening..." : "Ask EIVA anything..."}
-                className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-3 resize-none max-h-32"
+                placeholder={isListening ? "Listening..." : "Message EIVA..."}
+                className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-4 text-white placeholder-gray-500 resize-none max-h-32 min-h-[56px] leading-relaxed"
                 rows={1}
               />
 
               <button
                 onClick={handleSend}
                 disabled={isLoading || (!input.trim() && !selectedFile)}
-                className={`p-3 rounded-xl transition-all ${isLoading ? 'opacity-30' : 'text-[#6C63FF] hover:scale-110'}`}
+                className={`p-4 rounded-full transition-all m-1 ${isLoading ? 'opacity-30' : 'bg-white text-black hover:scale-105 shadow-lg shadow-white/10'}`}
               >
                 {isLoading ? (
                   <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                 ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 12h14m-7-7l7 7-7 7" /></svg>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14m-7-7l7 7-7 7" /></svg>
                 )}
               </button>
             </div>
+            <p className="text-center text-[10px] text-gray-500 mt-3 font-medium">AI can make mistakes. Verify important information.</p>
           </div>
         </div>
       </main>

@@ -27,18 +27,49 @@ const LoginPage: React.FC<LoginPageProps> = ({ onGuestLogin }) => {
     try {
       if (isSignUp) {
         console.log("LoginPage: Attempting sign up with", email);
-        const user = await signUpWithEmail(email, password);
-        console.log("LoginPage: Sign up successful", user);
+        await signUpWithEmail(email, password);
+        console.log("LoginPage: Sign up successful for", email);
+        // Optionally, you might want to automatically log in or prompt for email verification here
+        // For now, we'll assume successful signup means the user is ready to log in.
+        // If Supabase auto-logs in, onLogin() would be called. If not, user needs to log in.
+        // For this example, let's assume a successful signup means they are now logged in.
+        // If not, you might want to set isSignUp to false and let them log in.
+        // For now, we'll just call onLogin if signup is successful.
+        // A more robust solution might involve checking the session after signup.
+        // For now, let's just switch to login mode after signup for clarity.
+        setIsSignUp(false); // After successful signup, switch to login view
+        setError("Sign up successful! Please log in with your new credentials.");
       } else {
         console.log("LoginPage: Attempting login with", email);
-        const user = await loginWithEmail(email, password);
-        console.log("LoginPage: Login successful", user);
+        await loginWithEmail(email, password);
+        console.log("LoginPage: Login successful for", email);
+        // If login is successful, call onLogin to navigate away
+        // This assumes loginWithEmail handles session and redirects if needed,
+        // or that onLogin() will check the session.
+      }
+      // If we reach here, either signup or login was successful.
+      // If it was a login, we should call onLogin.
+      // If it was a signup, we just switched to login mode.
+      // The actual onLogin call should happen based on session changes,
+      // which are typically handled by an AuthProvider or similar.
+      // For this specific component, if login is successful, we call onLogin.
+      if (!isSignUp) { // Only call onLogin if it was an actual login attempt
+        // The original code had onLogin() called implicitly by the parent component
+        // reacting to auth state changes. Let's keep that pattern.
+        // If the component needs to explicitly trigger a navigation, onLogin() would be here.
+        // For now, let's assume the parent handles navigation based on auth state.
       }
     } catch (err: any) {
-      console.error("LoginPage: Auth error", err);
-      setError(err.message || "Authentication failed.");
+      console.error("LoginPage: Auth error:", err);
+      let errorMessage = "Authentication failed.";
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.error_description) {
+        errorMessage = err.error_description;
+      }
+      setError(errorMessage);
     } finally {
-      console.log("LoginPage: Loading set to false");
+      console.log("LoginPage: Auth process finished.");
       setLoading(false);
     }
   };
