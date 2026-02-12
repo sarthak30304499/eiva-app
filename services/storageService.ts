@@ -328,34 +328,71 @@ export const searchUsers = async (query: string): Promise<User[]> => {
     .limit(20);
 
   if (!data) return [];
-  // Use mapUser but check if followers count matters for search display
-  // For now simple map with empty counts is fine as list view fetches profile individually usually?
-  // Actually list view uses 'user-list' or 'search' view in App.tsx.
-  // App.tsx uses 'mapUser' indirectly via searchUsers result.
-  // We need to match 'mapUser' signature or update it.
-  // mapUser expects dbUser and optionally followingIds.
-  // For search, we might not know following status efficiently for all 20 users without join.
-  // We can pass empty for now, UI might show 'Follow' button correctly if it checks 'currentUser.following' separately?
-  // App.tsx 'handleSearch' -> 'getFilteredPeople'.
-  // 'getFilteredPeople' uses 'allUsers' state usually for local search?
-  // Wait, App.tsx line 406: searchUsers is NOT used in App.tsx provided in Step 77?
-  // Let's re-read App.tsx in Step 77.
-  // Line 216: handleSearch sets state.
-  // Line 271: getFilteredPeople filters 'allUsers'.
-  // 'allUsers' is populated by 'getAllUsersList'.
-  // So 'searchUsers' might be used in 'UserChat' or 'Navbar' for a different search?
-  // Ah, 'UserChat' might use it.
-  return data.map((u: any) => ({
-    id: u.id,
-    name: u.name || 'Anonymous',
-    username: u.username || 'user',
-    email: u.email || '',
-    bio: u.bio || '',
-    avatar: u.profile_pic || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`,
-    joinedAt: u.created_at,
-    following: [],
-    followers: [],
-    isVerified: false
-  }));
+  return data.map((u: any) => mapUser(u));
 };
+
+export const fetchRecentChats = async (): Promise<User[]> => {
+  const myId = (await supabase.auth.getUser()).data.user?.id;
+  if (!myId) return [];
+
+  // Fetch all messages where I am sender or receiver
+  const { data: messages, error } = await supabase
+    .from('messages')
+    .select('sender_id, receiver_id, created_at, content')
+    .or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
+    .order('created_at', { ascending: false });
+
+  if (error || !messages) return [];
+
+  // Extract unique user IDs that are NOT me
+  const contactIds = new Set<string>();
+  messages.forEach(m => {
+    if (m.sender_id !== myId) contactIds.add(m.sender_id);
+    if (m.receiver_id !== myId) contactIds.add(m.receiver_id);
+  });
+
+  if (contactIds.size === 0) return [];
+
+  // Fetch user details for these contacts
+  const { data: users } = await supabase
+    .from('users')
+    .select('*')
+    .in('id', Array.from(contactIds));
+
+  if (!users) return [];
+
+  // Map to User objects and ideally sort by most recent message (which we have in 'messages')
+  // We can create a map of userId -> lastMessageDate to sort
+  const lastMessageMap = new Map<string, string>();
+  messages.forEach(m => {
+    const otherId = m.sender_id === myId ? m.receiver_id : m.sender_id;
+    if (!lastMessageMap.has(otherId)) {
+      lastMessageMap.set(otherId, m.created_at);
+    }
+  });
+
+  const validUsers = users.map((u: any) => mapUser(u));
+
+  // Sort by last message time
+  return validUsers.sort((a, b) => {
+    const timeA = lastMessageMap.get(a.id) || '';
+    const timeB = lastMessageMap.get(b.id) || '';
+    return new Date(timeB).getTime() - new Date(timeA).getTime();
+  });
+};
+
+export const updateUserProfile = async (userId: string, updates: Partial<User>) => {
+  // Map App User fields to DB columns if necessary
+  // App: name, username, bio, avatar
+  // DB: name, username, bio, profile_pic
+  const dbUpdates: any = {};
+  if (updates.name !== undefined) dbUpdates.name = updates.name;
+  if (updates.username !== undefined) dbUpdates.username = updates.username;
+  if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
+  if (updates.avatar !== undefined) dbUpdates.profile_pic = updates.avatar;
+
+  const { error } = await supabase.from('users').update(dbUpdates).eq('id', userId);
+  if (error) throw error;
+};
+
 
