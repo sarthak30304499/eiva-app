@@ -5,6 +5,13 @@ import { generateAIAnswer, ImagePart, generateSpeech, decodeAudioData } from '..
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ThemeSelector, { Theme } from './ThemeSelector';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Send, Mic, Image as ImageIcon, X,
+  Terminal, Cpu, Zap, Copy, Volume2,
+  StopCircle, Sparkles, MessageSquare,
+  User as UserIcon
+} from 'lucide-react';
 
 interface AIChatProps {
   user: User;
@@ -33,11 +40,12 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
   const recognitionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(() => scrollToBottom(), [messages, isLoading]);
 
-  // Save to localStorage whenever messages change
+  // Save to localStorage
   useEffect(() => {
     localStorage.setItem('eiva-ai-history', JSON.stringify(messages));
   }, [messages]);
@@ -45,7 +53,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
   const [speechError, setSpeechError] = useState<string | null>(null);
 
   const clearChat = () => {
-    if (confirm('Are you sure you want to clear the chat history?')) {
+    if (confirm('Are you sure you want to purge the neural archives?')) {
       setMessages([]);
       localStorage.removeItem('eiva-ai-history');
     }
@@ -53,8 +61,15 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    // Optional: Show a toast or temporary "Copied!" state
   };
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [input]);
 
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -82,16 +97,11 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
         setIsListening(false);
         if (event.error === 'not-allowed') {
           setSpeechError("Microphone access denied.");
-          alert("Please allow microphone access to use voice input.");
-        } else if (event.error === 'no-speech') {
-          // ignore
         } else {
           setSpeechError("Voice error: " + event.error);
         }
       };
 
-    } else {
-      console.warn("Speech Recognition not supported in this browser.");
     }
   }, []);
 
@@ -106,17 +116,10 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
           recognitionRef.current.start();
           setIsListening(true);
         } catch (e: any) {
-          if (e.name === 'InvalidStateError' || e.message?.includes('already started')) {
-            console.log("AIChat: Recognition already active");
-            setIsListening(true);
-          } else {
-            console.error("Start listening error:", e);
-            setIsListening(false);
-            setSpeechError("Could not start microphone.");
-          }
+          setIsListening(true);
         }
       } else {
-        alert("Speech Recognition is not supported in this browser. Please use Chrome.");
+        alert("Speech Recognition requires Chrome.");
       }
     }
   };
@@ -205,7 +208,6 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
       };
       setMessages(prev => [...prev, aiMsg]);
 
-      // Auto-play if Voice Mode is ON
       if (voiceMode && response.text) {
         handleSpeak(aiMsg.id, response.text);
       }
@@ -213,7 +215,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
       setMessages(prev => [...prev, {
         id: 'err',
         role: 'model',
-        parts: [{ text: "Error connecting to EIVA intelligence. Please check your network." }],
+        parts: [{ text: "Connection severed. Neural link unstable." }],
         timestamp: new Date().toISOString()
       }]);
     } finally {
@@ -224,253 +226,284 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
 
   const getThemeBackground = () => {
     switch (theme) {
-      case 'space':
-        return 'galaxy-bg';
-      case 'snow':
-        return 'snow-bg';
-      case 'fire':
-        return 'fire-bg';
-      case 'wind':
-        return 'wind-bg';
-      default:
-        return 'galaxy-bg';
+      case 'space': return 'galaxy-bg';
+      case 'snow': return 'snow-bg';
+      case 'fire': return 'fire-bg';
+      case 'wind': return 'wind-bg';
+      default: return 'galaxy-bg';
     }
   };
 
   return (
     <div className={`flex h-[calc(100vh-56px)] ${getThemeBackground()} relative overflow-hidden font-['Plus_Jakarta_Sans'] transition-all duration-700`}>
 
-      {/* Theme Specific Elements */}
-      {theme === 'space' && <div className="stars"></div>}
+      {/* Dynamic Background Elements */}
+      {theme === 'space' && <div className="stars-static inset-0 absolute opacity-30"></div>}
 
-      {theme === 'snow' && (
-        <>
-          {[...Array(20)].map((_, i) => (
-            <div key={i} className="snowflake" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 5}s`, opacity: Math.random() }}>❄</div>
-          ))}
-        </>
-      )}
-
-      {theme === 'fire' && (
-        <>
-          {[...Array(30)].map((_, i) => (
-            <div key={i} className="ember" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 2}s`, width: `${Math.random() * 6 + 2}px` }}></div>
-          ))}
-        </>
-      )}
-
-      {theme === 'wind' && (
-        <>
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="breeze" style={{ top: `${Math.random() * 80 + 10}%`, animationDelay: `${Math.random() * 3}s` }}></div>
-          ))}
-        </>
-      )}
-
-      {/* Decorative Planets/Orbs (Only for Space/Cyber look) */}
-      {theme === 'space' && (
-        <>
-          <div className="absolute top-20 -left-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-20 -right-20 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        </>
-      )}
+      {/* Decorative Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-purple-600/10 blur-[100px] animate-pulse-glow pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[30vw] h-[30vw] rounded-full bg-blue-600/10 blur-[80px] animate-pulse-glow delay-1000 pointer-events-none" />
 
       <main className="flex-1 flex flex-col relative max-w-5xl mx-auto w-full z-10">
+        {/* Header */}
         <header className="px-6 py-4 flex items-center justify-between sticky top-0 z-20 pointer-events-none">
-          <div className="pointer-events-auto">
-            {/* Empty top left for clean look, or maybe just a small logo if needed */}
-          </div>
-          <div className="flex items-center space-x-2 pointer-events-auto bg-black/40 backdrop-blur-md rounded-full p-1 pl-4 border border-white/10">
-            <span className="text-xs font-bold text-white/50 uppercase tracking-widest mr-2">EIVA</span>
+          <div className="pointer-events-auto"></div>
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="flex items-center gap-3 pointer-events-auto glass-dark rounded-full p-1.5 pl-5 shadow-2xl"
+          >
+            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mr-2">EIVA SYSTEM</span>
             <ThemeSelector currentTheme={theme} onThemeChange={setTheme} />
-            <div className="w-px h-4 bg-white/10 mx-2"></div>
+            <div className="w-px h-4 bg-white/10 mx-1"></div>
             {messages.length > 0 && (
               <button
                 onClick={clearChat}
-                className="px-3 py-1.5 rounded-full hover:bg-white/10 text-xs font-bold text-red-300 transition-all mr-2"
+                className="p-2 rounded-full hover:bg-white/10 text-red-400 transition-colors"
+                title="Purge Memory"
               >
-                Clear
+                <X size={14} strokeWidth={3} />
               </button>
             )}
             <button
               onClick={onReturnToChoice}
-              className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition-all"
+              className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all hover:scale-105"
             >
               Exit
             </button>
-          </div>
+          </motion.div>
         </header>
 
+        {/* Chat Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 scrollbar-hide">
-          {messages.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center opacity-60 animate-fade-in">
-              <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-6 floating backdrop-blur-sm border border-white/10">
-                <span className="text-5xl">
-                  {theme === 'space' ? '🌌' : theme === 'snow' ? '❄️' : theme === 'fire' ? '🔥' : '💨'}
-                </span>
-              </div>
-              <h3 className="text-2xl font-black text-white mb-2 tracking-tight">EIVA ONLINE</h3>
-              <p className="text-blue-200 font-medium text-sm tracking-widest uppercase">Awaiting Transmission...</p>
-            </div>
-          )}
+          <AnimatePresence>
+            {messages.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="h-full flex flex-col items-center justify-center text-center p-8"
+              >
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  className="w-32 h-32 rounded-full border border-white/10 flex items-center justify-center mb-8 relative"
+                >
+                  <div className="absolute inset-0 rounded-full border-t border-purple-500/50" />
+                  <div className="absolute inset-2 rounded-full border-b border-blue-500/50" />
+                  <span className="text-6xl filter drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+                    {theme === 'space' ? '🌌' : theme === 'snow' ? '❄️' : theme === 'fire' ? '🔥' : '💨'}
+                  </span>
+                </motion.div>
+                <h3 className="text-4xl font-black text-white mb-3 tracking-tighter mix-blend-overlay">EIVA ONLINE</h3>
+                <p className="text-blue-200/50 font-medium text-xs tracking-[0.3em] uppercase">System Ready // Awaiting Input</p>
+              </motion.div>
+            )}
 
-          {messages.map((msg, index) => (
-            <div key={msg.id || index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up group`}>
-              <div className={`max-w-[85%] md:max-w-[70%] flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+            {messages.map((msg, index) => (
+              <motion.div
+                key={msg.id || index}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}
+              >
+                <div className={`max-w-[90%] md:max-w-[75%] flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
 
-                {/* Avatar */}
-                <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold border ${msg.role === 'user'
-                  ? 'bg-gradient-to-br from-[#6C63FF] to-[#00C6FF] border-transparent text-white'
-                  : 'bg-black/40 border-white/20 text-white backdrop-blur-md'
-                  }`}>
-                  {msg.role === 'user' ? user.username[0].toUpperCase() : '✨'}
-                </div>
-
-                <div className="space-y-1">
-                  <div className={`p-5 rounded-2xl relative backdrop-blur-md border ${msg.role === 'user'
-                    ? 'bg-gradient-to-br from-[#6C63FF]/90 to-[#00C6FF]/90 text-white border-white/10 shadow-lg shadow-purple-500/20 rounded-tr-none'
-                    : 'bg-black/40 text-gray-100 border-white/10 shadow-xl rounded-tl-none'
+                  {/* Avatar */}
+                  <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-sm font-bold shadow-lg ${msg.role === 'user'
+                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
+                    : 'glass-dark text-cyan-300'
                     }`}>
-
-                    {msg.parts.map((part, i) => (
-                      <div key={i} className="space-y-3">
-                        {part.inlineData && (
-                          <div className="relative group/image overflow-hidden rounded-lg border border-white/10">
-                            <img src={`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`} className="max-h-64 object-cover w-full transition-transform group-hover/image:scale-105" />
-                          </div>
-                        )}
-                        {part.text && (
-                          <div className={`text-sm leading-7 tracking-wide ${msg.role === 'model'
-                            ? 'prose prose-invert prose-p:my-1 prose-headings:text-white prose-a:text-blue-300 prose-code:text-blue-200 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10'
-                            : 'font-medium'
-                            }`}>
-                            {msg.role === 'model' ? (
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  code({ node, inline, className, children, ...props }: any) {
-                                    const match = /language-(\w+)/.exec(className || '')
-                                    return !inline && match ? (
-                                      <div className="relative group/code my-4">
-                                        <div className="absolute right-2 top-2 z-10 opacity-0 group-hover/code:opacity-100 transition-opacity">
-                                          <button
-                                            onClick={() => copyToClipboard(String(children).replace(/\n$/, ''))}
-                                            className="bg-white/10 hover:bg-white/20 text-white text-[10px] px-2 py-1 rounded border border-white/20 backdrop-blur-md"
-                                          >
-                                            Copy
-                                          </button>
-                                        </div>
-                                        <pre className={className}>
-                                          <code className={className} {...props}>
-                                            {children}
-                                          </code>
-                                        </pre>
-                                      </div>
-                                    ) : (
-                                      <code className={className} {...props}>
-                                        {children}
-                                      </code>
-                                    )
-                                  }
-                                }}
-                              >
-                                {part.text}
-                              </ReactMarkdown>
-                            ) : (
-                              part.text
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-
-                    {/* Speak Button for AI */}
-                    {msg.role === 'model' && msg.parts[0]?.text && (
-                      <button
-                        onClick={() => handleSpeak(msg.id, msg.parts[0].text!)}
-                        className={`absolute -right-12 top-0 p-2 rounded-full transition-all opacity-0 group-hover:opacity-100 ${playingMessageId === msg.id ? 'bg-[#6C63FF] text-white animate-pulse opacity-100' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                        title="Read Aloud"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                        </svg>
-                      </button>
-                    )}
+                    {msg.role === 'user' ? <UserIcon className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
                   </div>
-                  <div className={`text-[10px] font-bold uppercase tracking-widest opacity-40 text-white ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <div className={`p-6 rounded-3xl relative backdrop-blur-md shadow-xl border ${msg.role === 'user'
+                      ? 'bg-indigo-600/80 text-white border-white/10 rounded-tr-sm'
+                      : 'glass-dark text-gray-100 border-white/5 rounded-tl-sm'
+                      }`}>
+
+                      {msg.parts.map((part, i) => (
+                        <div key={i} className="space-y-4">
+                          {part.inlineData && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className="relative overflow-hidden rounded-xl border border-white/10 group/img"
+                            >
+                              <img src={`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`} className="max-h-80 w-full object-cover transition-transform duration-500 group-hover/img:scale-105" />
+                            </motion.div>
+                          )}
+
+                          {part.text && (
+                            <div className={`text-[15px] leading-7 tracking-wide ${msg.role === 'model'
+                              ? 'prose prose-invert prose-p:my-2 prose-headings:text-white prose-a:text-cyan-300 prose-code:text-purple-200 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-xl'
+                              : ''
+                              }`}>
+                              {msg.role === 'model' ? (
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    code({ node, inline, className, children, ...props }: any) {
+                                      const match = /language-(\w+)/.exec(className || '')
+                                      return !inline && match ? (
+                                        <div className="relative group/code my-4">
+                                          <div className="absolute right-3 top-3 z-10 opacity-0 group-hover/code:opacity-100 transition-opacity">
+                                            <button
+                                              onClick={() => copyToClipboard(String(children).replace(/\n$/, ''))}
+                                              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                                              title="Copy Code"
+                                            >
+                                              <Copy size={14} />
+                                            </button>
+                                          </div>
+                                          <pre className={`${className} bg-black/40 !p-4 !rounded-xl border border-white/10 shadow-inner`}>
+                                            <code className={className} {...props}>{children}</code>
+                                          </pre>
+                                        </div>
+                                      ) : (
+                                        <code className={`${className} bg-white/10 px-1.5 py-0.5 rounded text-sm`} {...props}>{children}</code>
+                                      )
+                                    }
+                                  }}
+                                >
+                                  {part.text}
+                                </ReactMarkdown>
+                              ) : (
+                                part.text
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* AI Toolbar */}
+                      {msg.role === 'model' && msg.parts[0]?.text && (
+                        <div className="absolute -bottom-10 left-0 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                          <button
+                            onClick={() => handleSpeak(msg.id, msg.parts[0].text!)}
+                            className={`p-2 rounded-full glass-dark hover:bg-white/10 ${playingMessageId === msg.id ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`}
+                          >
+                            {playingMessageId === msg.id ? <StopCircle size={16} /> : <Volume2 size={16} />}
+                          </button>
+                          <button
+                            onClick={() => copyToClipboard(msg.parts[0].text!)}
+                            className="p-2 rounded-full glass-dark hover:bg-white/10 text-gray-400 hover:text-white"
+                          >
+                            <Copy size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-2">
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              </motion.div>
+            ))}
+
+            {isLoading && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-start max-w-[75%] gap-4"
+              >
+                <div className="w-10 h-10 rounded-xl glass-dark flex items-center justify-center shadow-lg text-cyan-300 animate-pulse">
+                  <Cpu className="w-5 h-5" />
+                </div>
+                <div className="glass-dark p-6 rounded-3xl rounded-tl-sm flex items-center gap-2">
+                  <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" />
+                  <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-100" />
+                  <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-200" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Command Deck */}
         <div className="p-4 md:p-6 pb-8">
-          <div className="max-w-3xl mx-auto relative">
-            {previewUrl && (
-              <div className="absolute bottom-full left-0 mb-4 p-3 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl flex items-center space-x-4 animate-slide-up">
-                <img src={previewUrl} className="w-16 h-16 rounded-lg object-cover border border-white/20" />
-                <div>
-                  <p className="text-xs font-bold text-white mb-1">Image Attached</p>
-                  <button onClick={removeFile} className="text-red-400 text-[10px] font-black uppercase hover:text-red-300 transition-colors">Discard</button>
-                </div>
-              </div>
-            )}
+          <div className="max-w-4xl mx-auto relative group/deck">
 
-            <div className="bg-[#1e1e1e]/80 backdrop-blur-xl rounded-2xl p-2 flex items-end border border-white/10 shadow-2xl ring-1 ring-white/5 focus-within:ring-purple-500/50 transition-all">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="p-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors mb-0.5"
-                title="Upload Image"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-              </button>
+            {/* Image Preview */}
+            <AnimatePresence>
+              {previewUrl && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                  className="absolute bottom-full left-0 mb-4 p-2 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl flex items-center space-x-3"
+                >
+                  <img src={previewUrl} className="w-12 h-12 rounded-lg object-cover" />
+                  <div className="pr-2">
+                    <p className="text-[10px] font-bold text-white uppercase tracking-wider">Analysis Target</p>
+                    <button onClick={removeFile} className="text-red-400 text-[10px] hover:underline">Remove</button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <motion.div
+              className={`
+                glass-dark rounded-[2rem] p-2 flex items-end border transition-all duration-300
+                ${isListening ? 'border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.2)]' : 'border-white/10 hover:border-white/20 focus-within:border-indigo-500/50 focus-within:shadow-[0_0_30px_rgba(99,102,241,0.15)]'}
+              `}
+            >
+              <div className="flex flex-col gap-2 p-1">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-3 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                >
+                  <ImageIcon size={20} />
+                </button>
+                <button
+                  onClick={toggleListening}
+                  className={`p-3 rounded-full transition-all ${isListening ? 'bg-red-500/20 text-red-500 animate-pulse' : 'hover:bg-white/10 text-gray-400 hover:text-white'}`}
+                >
+                  {isListening ? <StopCircle size={20} /> : <Mic size={20} />}
+                </button>
+              </div>
 
               <textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder="Ask anything..."
-                className="flex-1 bg-transparent border-none focus:ring-0 text-base py-3 px-2 text-white placeholder-gray-500 resize-none max-h-48 min-h-[48px] leading-relaxed scrollbar-hide"
+                placeholder={isListening ? "Listening..." : "Enter command or query..."}
+                className="flex-1 bg-transparent border-none focus:ring-0 text-base py-4 px-2 text-white placeholder-gray-500 resize-none max-h-48 min-h-[56px] leading-relaxed scrollbar-hide"
                 rows={1}
-                style={{ height: 'auto', minHeight: '44px' }}
               />
 
-              <div className="flex items-center space-x-1 mb-0.5">
-                <button
-                  onClick={toggleListening}
-                  className={`p-3 rounded-xl transition-all ${isListening ? 'bg-red-500/20 text-red-400 animate-pulse' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                  title={isListening ? 'Stop listening' : 'Voice Input'}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-20a3 3 0 00-3 3v8a3 3 0 006 0V5a3 3 0 00-3-3z" />
-                  </svg>
-                </button>
-
+              <div className="p-1 pb-2 pr-1">
                 <button
                   onClick={handleSend}
                   disabled={isLoading || (!input.trim() && !selectedFile)}
-                  className={`p-3 rounded-xl transition-all ${isLoading || (!input.trim() && !selectedFile) ? 'opacity-30 cursor-not-allowed bg-white/5 text-gray-400' : 'bg-white text-black hover:scale-105 shadow-lg shadow-white/10'}`}
+                  className={`
+                    p-3 rounded-[1.5rem] transition-all duration-300 flex items-center justify-center
+                    ${isLoading || (!input.trim() && !selectedFile)
+                      ? 'bg-white/5 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-lg hover:shadow-indigo-500/30 hover:scale-105 active:scale-95'}
+                  `}
                 >
                   {isLoading ? (
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    <Cpu className="animate-spin w-5 h-5" />
                   ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14m-7-7l7 7-7 7" /></svg>
+                    <Send className="w-5 h-5 ml-0.5" />
                   )}
                 </button>
               </div>
 
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+            </motion.div>
 
-              {speechError && (
-                <div className="absolute bottom-full left-10 mb-2 bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap z-50 animate-fade-in-down font-bold">
-                  ⚠️ {speechError}
-                </div>
-              )}
+            <div className="text-center mt-3 flex items-center justify-center gap-2 opacity-40">
+              <Terminal size={10} className="text-blue-400" />
+              <p className="text-[10px] font-mono text-blue-200">EIVA SYSTEM V2.0 • SECURE CONNECTION</p>
             </div>
-            <p className="text-center text-[10px] text-gray-500 mt-2 font-medium">EIVA can make mistakes. Consider checking important information.</p>
+
           </div>
         </div>
       </main>

@@ -78,6 +78,17 @@ const Navbar: React.FC<NavbarProps> = ({
             {isDarkMode ? '🌞' : '🌙'}
           </button>
 
+          {/* Gamification: Level Indicator */}
+          <div className="hidden md:flex flex-col items-end mr-2">
+            <div className="flex items-center space-x-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#6C63FF]">LVL 5</span>
+              <span className="text-[10px] font-bold text-gray-400">Voyager</span>
+            </div>
+            <div className="w-24 h-1 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mt-1">
+              <div className="h-full bg-gradient-to-r from-[#6C63FF] to-[#00C6FF] w-[75%] rounded-full animate-pulse-glow"></div>
+            </div>
+          </div>
+
           {user && (
             <button
               onClick={() => onNavigate('profile')}

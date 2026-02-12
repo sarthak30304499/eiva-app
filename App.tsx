@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { User, Question, Comment, ViewState, Space, SearchFilter, AppMode } from './types';
 import { generateAIAnswer, ImagePart } from './services/geminiService';
 import { supabase } from './supabaseClient';
@@ -322,7 +323,14 @@ const App: React.FC = () => {
 
   if (appMode === 'ai') {
     return (
-      <div className="min-h-screen transition-colors">
+      <motion.div
+        key="ai-mode"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={{ duration: 0.3 }}
+        className="min-h-screen transition-colors"
+      >
         <Navbar
           user={currentUser}
           currentView={currentView}
@@ -349,18 +357,26 @@ const App: React.FC = () => {
           theme={currentTheme}
           setTheme={setCurrentTheme}
         />
-      </div>
+      </motion.div>
     );
   }
 
   if (appMode === 'chat') {
     return (
-      <UserChat
-        currentUser={currentUser}
-        onReturnToChoice={() => setAppMode('choice')}
-        theme={currentTheme}
-        setTheme={setCurrentTheme}
-      />
+      <motion.div
+        key="chat-mode"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={{ duration: 0.3 }}
+      >
+        <UserChat
+          currentUser={currentUser}
+          onReturnToChoice={() => setAppMode('choice')}
+          theme={currentTheme}
+          setTheme={setCurrentTheme}
+        />
+      </motion.div>
     );
   }
 
@@ -373,7 +389,14 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
+    <motion.div
+      key="home-mode"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors"
+    >
       <Navbar
         user={currentUser}
         currentView={currentView}
@@ -647,7 +670,7 @@ const App: React.FC = () => {
           </div>
         </aside>
       </main>
-    </div>
+    </motion.div>
   );
 };
 
