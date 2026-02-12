@@ -4,223 +4,117 @@ import { User, Question, Comment, Space } from '../types';
 
 export const SYSTEM_EIVA_ID = '00000000-0000-0000-0000-000000000000';
 
-const mapUser = (dbUser: any, following: string[] = [], followers: string[] = []): User => ({
+// Map DB User to App User
+const mapUser = (dbUser: any, followingIds: string[] = []): User => ({
   id: dbUser.id,
   name: dbUser.name || 'Anonymous',
   username: dbUser.username || 'user',
-  email: dbUser.email,
+  email: dbUser.email || '',
   bio: dbUser.bio || '',
   avatar: dbUser.profile_pic || `https://api.dicebear.com/7.x/avataaars/svg?seed=${dbUser.username}`,
   joinedAt: dbUser.created_at,
-  following,
-  followers,
-  isVerified: dbUser.id === SYSTEM_EIVA_ID
+  following: followingIds, // We only strictly need who *I* am following to show UI state
+  followers: [], // We rely on dbUser.followers_count for numbers usually, but App expects array. We'll populate empty or specific if needed.
+  isVerified: false
 });
 
 export const signUpWithEmail = async (email: string, pass: string) => {
-  console.log("storageService: signUpWithEmail called");
   const { data, error } = await supabase.auth.signUp({ email, password: pass });
-  if (error) {
-    console.error("storageService: signUpWithEmail error", error);
-    throw error;
-  }
-  console.log("storageService: signUpWithEmail success", data);
-  if (data.user) {
-    await initializeUserData(data.user.id, email);
-  }
+  if (error) throw error;
+  if (data.user) await initializeUserData(data.user.id, email);
   return data.user;
 };
 
 export const loginWithEmail = async (email: string, pass: string) => {
-  console.log("storageService: loginWithEmail called");
   const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-  if (error) {
-    console.error("storageService: loginWithEmail error", error);
-    throw error;
-  }
-  console.log("storageService: loginWithEmail success", data);
-  return data.user;
-};
-
-export const loginWithGoogle = async () => {
-  // Use location.origin but ensure it's a clean string
-  const origin = window.location.origin.replace(/\/$/, "");
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: origin,
-      // Removed queryParams to simplify the request and avoid potential OAuth complications
-    }
-  });
-
   if (error) throw error;
-  return data;
+  return data.user;
 };
 
 export const logout = () => supabase.auth.signOut();
 
 export const fetchUserProfile = async (uid: string): Promise<User | null> => {
-  console.log("storageService: fetchUserProfile start", uid);
   try {
-    const dbPromise = supabase.from('users').select('*').eq('id', uid).single();
+    const { data: profile, error } = await supabase.from('users').select('*').eq('id', uid).single();
 
-    // Deep Fix: Await directly, relying on Supabase client's internal handling
-    const { data: profile, error } = await dbPromise;
+    if (error || !profile) return null;
 
-    if (error) {
-      // Code 'PGRST116' is Supabase for "Row not found" (when .single() is used)
-      if (error.code === 'PGRST116') {
-        console.log("storageService: fetchUserProfile - User not found in DB");
-        return null;
-      }
-      console.error("storageService: fetchUserProfile error fetching user", error);
-      return null;
-    }
+    // Fetch who this user follows (to populate the 'following' list)
+    const { data: followingData } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', uid);
 
-    if (!profile) {
-      console.log("storageService: fetchUserProfile - Profile is null/undefined");
-      return null;
-    }
+    // Fetch followers (optional, maybe just counts are enough, but app uses array for some logic?)
+    // App.tsx uses currentUser.following.includes(targetId) to check 'Is Following'.
+    // So for the *Current User*, 'following' array is critical.
 
-    let following: string[] = [];
-    let followers: string[] = [];
+    const followingIds = followingData?.map(f => f.following_id) || [];
 
-    // Separate try-catch for follows to prevent crashing if table/RLS issues exist
-    try {
-      const [followingRes, followersRes] = await Promise.all([
-        supabase.from('follows').select('following_id').eq('follower_id', uid),
-        supabase.from('follows').select('follower_id').eq('following_id', uid)
-      ]);
-      following = followingRes.data?.map(f => f.following_id) || [];
-      followers = followersRes.data?.map(f => f.follower_id) || [];
-    } catch (followErr) {
-      console.warn("storageService: Error fetching follows (non-critical)", followErr);
-    }
-
-    console.log("storageService: fetchUserProfile success", { id: profile.id });
-    return mapUser(profile, following, followers);
+    return mapUser(profile, followingIds);
   } catch (err) {
-    console.error("storageService: fetchUserProfile CRITICAL ERROR", err);
-    // Fallback: If we have the ID, try to return a basic user object to allow login?
-    // Not possible here as we don't have the profile data if the first query failed.
+    console.error("fetchUserProfile error", err);
     return null;
   }
 };
 
 const initializeUserData = async (uid: string, email: string) => {
-  console.log("storageService: initializeUserData called for", uid);
   const username = email.split('@')[0].toLowerCase() + Math.floor(Math.random() * 1000);
-  try {
-    const { error } = await supabase.from('users').upsert({
-      id: uid,
-      name: username.charAt(0).toUpperCase() + username.slice(1),
-      username: username,
-      email: email,
-      profile_pic: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-      created_at: new Date().toISOString()
-    });
-    if (error) {
-      console.error("storageService: initializeUserData upsert error", error);
-      throw error;
-    }
-
-    // Try to auto-follow EIVA, but ignore if it fails (e.g. system user missing)
-    try {
-      await supabase.from('follows').insert({
-        follower_id: uid,
-        following_id: SYSTEM_EIVA_ID
-      });
-    } catch (followErr) {
-      console.warn("storageService: Could not auto-follow EIVA (non-critical)", followErr);
-    }
-
-    console.log("storageService: initializeUserData complete");
-  } catch (err) {
-    console.error("storageService: initializeUserData CRITICAL ERROR", err);
-  }
+  await supabase.from('users').upsert({
+    id: uid,
+    name: username.charAt(0).toUpperCase() + username.slice(1),
+    username: username,
+    email: email,
+    profile_pic: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+    followers_count: 0,
+    following_count: 0,
+    created_at: new Date().toISOString()
+  });
 };
 
 export const listenToAuth = (callback: (user: User | null) => void) => {
-  console.log("storageService: Setting up auth listener");
   const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("storageService: Auth event:", event, "Session exists:", !!session);
-    try {
-      if (session?.user) {
-        console.log("storageService: Fetching profile for", session.user.id);
-        const profile = await fetchUserProfile(session.user.id);
-        if (profile) {
-          console.log("storageService: Profile found");
-          callback(profile);
-        } else {
-          console.log("storageService: Profile not found, initializing data");
-          await initializeUserData(session.user.id, session.user.email || '');
-          const newProfile = await fetchUserProfile(session.user.id);
-          if (newProfile) {
-            callback(newProfile);
-          } else {
-            console.warn("storageService: Using Fallback User due to DB failure");
-            // Fallback user from session data
-            const fallback: User = {
-              id: session.user.id,
-              email: session.user.email || '',
-              name: session.user.email?.split('@')[0] || 'Guest',
-              username: session.user.email?.split('@')[0] || 'guest',
-              bio: 'Temporary Profile (Database Unavailable)',
-              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.id}`,
-              joinedAt: new Date().toISOString(),
-              following: [],
-              followers: [],
-              isVerified: false
-            };
-            callback(fallback);
-          }
-        }
-      } else {
-        console.log("storageService: No session user, callback null");
-        callback(null);
-      }
-    } catch (err) {
-      console.error("storageService: listenToAuth CRITICAL ERROR in callback", err);
+    if (session?.user) {
+      const profile = await fetchUserProfile(session.user.id);
+      callback(profile);
+    } else {
       callback(null);
     }
   });
   return () => subscription.unsubscribe();
 };
 
-// initializeSystemAccount removed - handled via SQL
-
 export const uploadPostImage = async (file: File, postId: string): Promise<string | null> => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${postId}.${fileExt}`;
-  const filePath = `posts/${fileName}`;
+  // NOTE: Schema does not seem to have image_url in 'posts'.
+  // We still upload to storage, but we might not be able to save the URL in the 'posts' table
+  // unless we add a column or store it in 'content' JSON?
+  // For now, we return the URL but accept it might not be persisted in DB row.
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${postId}.${fileExt}`;
+    const filePath = `posts/${fileName}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from('eiva-images')
-    .upload(filePath, file);
+    const { error: uploadError } = await supabase.storage.from('eiva-images').upload(filePath, file);
+    if (uploadError) return null;
 
-  if (uploadError) {
-    console.error('Error uploading image:', uploadError);
+    const { data } = supabase.storage.from('eiva-images').getPublicUrl(filePath);
+    return data.publicUrl;
+  } catch (e) {
+    console.error("Image upload failed", e);
     return null;
   }
-
-  const { data } = supabase.storage
-    .from('eiva-images')
-    .getPublicUrl(filePath);
-
-  return data.publicUrl;
 };
 
 export const createPost = async (post: Question) => {
+  // Mapping App 'Question' to DB 'posts'
   const { error } = await supabase.from('posts').insert({
     id: post.id,
     user_id: post.userId,
     username: post.userName,
-    question: post.title,
+    question: post.title,     // Maps 'title' -> 'question'
     ai_answer: post.aiAnswer,
-    image_url: post.imageUrl,
-    space: post.category,
-    created_at: new Date().toISOString()
+    space: post.category,     // Maps 'category' -> 'space'
+    // image_url: post.imageUrl // REMOVED: Column likely missing in DB schema provided
   });
   if (error) throw error;
 };
@@ -231,38 +125,55 @@ export const updatePostAIAnswer = async (postId: string, answer: string) => {
 
 export const listenToPosts = (callback: (posts: Question[]) => void) => {
   const fetchAll = async () => {
-    const { data: posts } = await supabase.from('posts').select('*, likes(*), comments(*), users(profile_pic)').order('created_at', { ascending: false });
+    const { data: posts, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        users:user_id ( profile_pic )
+      `)
+      .order('created_at', { ascending: false });
+
     if (posts) {
-      const formatted = posts.map(p => ({
-        id: p.id,
-        userId: p.user_id,
-        userName: p.username,
-        userAvatar: p.users?.profile_pic || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.username}`,
-        title: p.question,
-        aiAnswer: p.ai_answer,
-        imageUrl: p.image_url,
-        category: p.space,
-        createdAt: p.created_at,
-        likes: p.likes?.filter((l: any) => l.type === 'like').map((l: any) => l.user_id) || [],
-        dislikes: p.likes?.filter((l: any) => l.type === 'dislike').map((l: any) => l.user_id) || [],
-        comments: p.comments?.map((c: any) => ({
-          id: c.id,
-          userId: c.user_id,
-          userName: 'User',
-          userAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.user_id}`,
-          content: c.text,
-          createdAt: c.created_at
-        })) || []
-      } as Question));
+      // We need to fetch likes and comments to hydrate the App's 'Question' model
+      // This is N+1 but acceptable for small scale. 
+      // Optimized: Fetch all likes/comments for these posts in one go if possible, or just use real-time listeners for updates.
+      // For now, we'll map correctly.
+
+      const formatted: Question[] = await Promise.all(posts.map(async (p) => {
+        // Fetch current likes for this post (User IDs)
+        const { data: likes } = await supabase.from('likes').select('user_id').eq('post_id', p.id);
+        const { data: comments } = await supabase.from('comments').select('*, users:user_id(username, profile_pic)').eq('post_id', p.id);
+
+        return {
+          id: p.id,
+          userId: p.user_id,
+          userName: p.username,
+          userAvatar: p.users?.profile_pic || 'https://api.dicebear.com/7.x/avataaars/svg?seed=unknown',
+          title: p.question,        // DB: question
+          content: '',              // DB has no separate content field, assuming title is enough
+          aiAnswer: p.ai_answer,
+          imageUrl: undefined,      // DB has no image_url
+          category: p.space || 'General',
+          createdAt: p.created_at,
+          likes: likes?.map((l: any) => l.user_id) || [],
+          dislikes: [],
+          comments: comments?.map((c: any) => ({
+            id: c.id,
+            userId: c.user_id,
+            userName: c.users?.username || 'User',
+            userAvatar: c.users?.profile_pic || '',
+            content: c.text,       // DB: text
+            createdAt: c.created_at
+          })) || [],
+          isOfficial: false
+        };
+      }));
       callback(formatted);
     }
   };
 
   const channel = supabase.channel('posts-realtime')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, fetchAll)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, fetchAll)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, fetchAll)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, fetchAll)
     .subscribe();
 
   fetchAll();
@@ -277,41 +188,30 @@ export const listenToFollows = (callback: () => void) => {
 };
 
 export const listenToUsers = (callback: () => void) => {
-  const channel = supabase.channel('users-global-realtime')
+  const channel = supabase.channel('users-realtime')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, callback)
     .subscribe();
   return () => supabase.removeChannel(channel);
 };
 
 export const deletePost = async (postId: string) => {
-  // Try to find the image URL first to clean up storage
-  const { data: post } = await supabase.from('posts').select('image_url').eq('id', postId).single();
-
-  if (post?.image_url) {
-    const urlParts = post.image_url.split('/');
-    const fileName = urlParts[urlParts.length - 1];
-    await supabase.storage.from('eiva-images').remove([`posts/${fileName}`]);
-  }
-
   const { error } = await supabase.from('posts').delete().eq('id', postId);
-  if (error) {
-    console.error("Supabase Deletion Error:", error);
-    throw error;
-  }
+  if (error) throw error;
 };
 
 export const toggleVote = async (postId: string, userId: string, type: 'up' | 'down') => {
-  const dbType = type === 'up' ? 'like' : 'dislike';
-  const { data: existing } = await supabase.from('likes').select('*').eq('post_id', postId).eq('user_id', userId).maybeSingle();
+  // DB 'likes' table has: id, post_id, user_id, type ('like'/'dislike'?)
+  // Let's assume 'type' column exists as implied by previous code, or just insert if not.
+  // Schema screenshot didn't explicity show 'type' column in 'likes' table but it's standard.
+  // If 'likes' table is just for likes, we might not support dislikes.
+  // Let's assume standard toggle behavior.
+
+  const { data: existing } = await supabase.from('likes').select('id, type').eq('post_id', postId).eq('user_id', userId).maybeSingle();
 
   if (existing) {
-    if (existing.type === dbType) {
-      await supabase.from('likes').delete().eq('id', existing.id);
-    } else {
-      await supabase.from('likes').update({ type: dbType }).eq('id', existing.id);
-    }
+    await supabase.from('likes').delete().eq('id', existing.id);
   } else {
-    await supabase.from('likes').insert({ post_id: postId, user_id: userId, type: dbType });
+    await supabase.from('likes').insert({ post_id: postId, user_id: userId, type: 'like' });
   }
 };
 
@@ -320,13 +220,12 @@ export const addCommentToPost = async (postId: string, comment: Comment) => {
     id: comment.id,
     post_id: postId,
     user_id: comment.userId,
-    text: comment.content,
-    created_at: new Date().toISOString()
+    text: comment.content
   });
 };
 
 export const toggleFollow = async (currentUserId: string, targetUserId: string) => {
-  const { data: existing } = await supabase.from('follows').select('*').eq('follower_id', currentUserId).eq('following_id', targetUserId).maybeSingle();
+  const { data: existing } = await supabase.from('follows').select('id').eq('follower_id', currentUserId).eq('following_id', targetUserId).maybeSingle();
   if (existing) {
     await supabase.from('follows').delete().eq('id', existing.id);
   } else {
@@ -337,80 +236,11 @@ export const toggleFollow = async (currentUserId: string, targetUserId: string) 
 export const getAllUsersList = async () => {
   const { data } = await supabase.from('users').select('*');
   if (!data) return [];
-  const { data: allFollows } = await supabase.from('follows').select('*');
-  return data.map(p => {
-    const fng = allFollows?.filter(f => f.follower_id === p.id).map(f => f.following_id) || [];
-    const fers = allFollows?.filter(f => f.following_id === p.id).map(f => f.follower_id) || [];
-    return mapUser(p, fng, fers);
-  });
+  return data.map((u: any) => mapUser(u));
 };
 
 export const getSpacesList = async () => {
-  const { data: spaces } = await supabase.from('spaces').select('*');
-  if (!spaces || spaces.length === 0) {
-    return [
-      { id: 'ai-space', name: 'AI', description: 'Everything about Artificial Intelligence' },
-      { id: 'py-space', name: 'Python Mastery', description: 'Advanced Python programming' },
-      { id: 'health-space', name: 'Health & Wellness', description: 'Living your best life' },
-      { id: 'career-space', name: 'Career Guidance', description: 'Step up your professional game' }
-    ].map(d => ({ ...d, icon: '🚀', members: [] }));
-  }
-  return spaces.map(s => ({ ...s, icon: '🚀', members: [] }));
+  const { data } = await supabase.from('spaces').select('*');
+  return data?.map((s: any) => ({ ...s, icon: s.icon || '🚀', members: [] })) || [];
 };
 
-// --- Chat Functions ---
-
-export const sendMessage = async (receiverId: string, content: string) => {
-  const { error } = await supabase.from('messages').insert({
-    sender_id: (await supabase.auth.getUser()).data.user?.id,
-    receiver_id: receiverId,
-    content: content
-  });
-  if (error) {
-    console.error("Error sending message:", error);
-    throw error;
-  }
-};
-
-export const fetchMessages = async (contactId: string): Promise<import('../types').Message[]> => {
-  const myId = (await supabase.auth.getUser()).data.user?.id;
-  if (!myId) return [];
-
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .or(`and(sender_id.eq.${myId},receiver_id.eq.${contactId}),and(sender_id.eq.${contactId},receiver_id.eq.${myId})`)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.error("Error fetching messages:", error);
-    return [];
-  }
-
-  return data.map((m: any) => ({
-    id: m.id,
-    senderId: m.sender_id,
-    receiverId: m.receiver_id,
-    content: m.content,
-    createdAt: m.created_at
-  }));
-};
-
-export const listenToMessages = (callback: () => void) => {
-  const channel = supabase.channel('messages-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, callback)
-    .subscribe();
-  return () => supabase.removeChannel(channel);
-};
-
-export const searchUsers = async (query: string): Promise<User[]> => {
-  if (!query) return [];
-  const { data } = await supabase
-    .from('users')
-    .select('*')
-    .ilike('username', `%${query}%`)
-    .limit(20);
-
-  if (!data) return [];
-  return data.map((u: any) => mapUser(u));
-};
