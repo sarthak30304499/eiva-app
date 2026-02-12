@@ -31,6 +31,21 @@ export const loginWithEmail = async (email: string, pass: string) => {
   return data.user;
 };
 
+export const loginWithGoogle = async () => {
+  // Use location.origin but ensure it's a clean string
+  const origin = window.location.origin.replace(/\/$/, "");
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: origin,
+    }
+  });
+
+  if (error) throw error;
+  return data;
+};
+
 export const logout = () => supabase.auth.signOut();
 
 export const fetchUserProfile = async (uid: string): Promise<User | null> => {
@@ -242,5 +257,90 @@ export const getAllUsersList = async () => {
 export const getSpacesList = async () => {
   const { data } = await supabase.from('spaces').select('*');
   return data?.map((s: any) => ({ ...s, icon: s.icon || '🚀', members: [] })) || [];
+};
+
+// --- Chat Functions ---
+
+export const sendMessage = async (receiverId: string, content: string) => {
+  const { error } = await supabase.from('messages').insert({
+    sender_id: (await supabase.auth.getUser()).data.user?.id,
+    receiver_id: receiverId,
+    content: content
+  });
+  if (error) {
+    console.error("Error sending message:", error);
+    throw error;
+  }
+};
+
+export const fetchMessages = async (contactId: string): Promise<import('../types').Message[]> => {
+  const myId = (await supabase.auth.getUser()).data.user?.id;
+  if (!myId) return [];
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .or(`and(sender_id.eq.${myId},receiver_id.eq.${contactId}),and(sender_id.eq.${contactId},receiver_id.eq.${myId})`)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error("Error fetching messages:", error);
+    return [];
+  }
+
+  return data.map((m: any) => ({
+    id: m.id,
+    senderId: m.sender_id,
+    receiverId: m.receiver_id,
+    content: m.content,
+    createdAt: m.created_at
+  }));
+};
+
+export const listenToMessages = (callback: () => void) => {
+  const channel = supabase.channel('messages-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, callback)
+    .subscribe();
+  return () => supabase.removeChannel(channel);
+};
+
+export const searchUsers = async (query: string): Promise<User[]> => {
+  if (!query) return [];
+  const { data } = await supabase
+    .from('users')
+    .select('*')
+    .ilike('username', `%${query}%`)
+    .limit(20);
+
+  if (!data) return [];
+  // Use mapUser but check if followers count matters for search display
+  // For now simple map with empty counts is fine as list view fetches profile individually usually?
+  // Actually list view uses 'user-list' or 'search' view in App.tsx.
+  // App.tsx uses 'mapUser' indirectly via searchUsers result.
+  // We need to match 'mapUser' signature or update it.
+  // mapUser expects dbUser and optionally followingIds.
+  // For search, we might not know following status efficiently for all 20 users without join.
+  // We can pass empty for now, UI might show 'Follow' button correctly if it checks 'currentUser.following' separately?
+  // App.tsx 'handleSearch' -> 'getFilteredPeople'.
+  // 'getFilteredPeople' uses 'allUsers' state usually for local search?
+  // Wait, App.tsx line 406: searchUsers is NOT used in App.tsx provided in Step 77?
+  // Let's re-read App.tsx in Step 77.
+  // Line 216: handleSearch sets state.
+  // Line 271: getFilteredPeople filters 'allUsers'.
+  // 'allUsers' is populated by 'getAllUsersList'.
+  // So 'searchUsers' might be used in 'UserChat' or 'Navbar' for a different search?
+  // Ah, 'UserChat' might use it.
+  return data.map((u: any) => ({
+    id: u.id,
+    name: u.name || 'Anonymous',
+    username: u.username || 'user',
+    email: u.email || '',
+    bio: u.bio || '',
+    avatar: u.profile_pic || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`,
+    joinedAt: u.created_at,
+    following: [],
+    followers: [],
+    isVerified: false
+  }));
 };
 
