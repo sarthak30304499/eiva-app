@@ -52,7 +52,22 @@ export const fetchUserProfile = async (uid: string): Promise<User | null> => {
   try {
     const { data: profile, error } = await supabase.from('users').select('*').eq('id', uid).single();
 
-    if (error || !profile) return null;
+    if (error || !profile) {
+      console.warn("User profile not found, checking auth session to potentially create one...");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id === uid) {
+        console.log("Creating missing profile for", user.email);
+        await initializeUserData(uid, user.email || '');
+        // Retry fetch
+        const { data: newProfile } = await supabase.from('users').select('*').eq('id', uid).single();
+        if (newProfile) {
+          const { data: followingData } = await supabase.from('follows').select('following_id').eq('follower_id', uid);
+          const followingIds = followingData?.map(f => f.following_id) || [];
+          return mapUser(newProfile, followingIds);
+        }
+      }
+      return null;
+    }
 
     // Fetch who this user follows (to populate the 'following' list)
     const { data: followingData } = await supabase

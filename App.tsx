@@ -294,16 +294,26 @@ const App: React.FC = () => {
   };
 
   if (!currentUser) return <LoginPage onLogin={() => {
-    // Force a re-check of auth state immediately
+    // We set auth checking to true to show the spinner while we verify the session
     setIsAuthChecking(true);
+
+    // Safety check: verify session immediately
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        refreshSelf(data.user.id);
-        setAppMode('choice');
+        // If user exists, refresh their profile.
+        // Importantly, refreshSelf does NOT stop the loading spinner by itself.
+        // We must ensure the spinner stops after profile load or if profile load fails.
+        refreshSelf(data.user.id).finally(() => {
+          // If refreshSelf succeeds (updates localUser), App will re-render with user.
+          // If it fails, localUser is null, so we must stop loading to show Login page again (or error).
+          // Ideally, if user is authenticated but profile missing (fixed in storageService), we should be good.
+          setIsAuthChecking(false);
+          setAppMode('choice');
+        });
       } else {
         setIsAuthChecking(false);
       }
-    });
+    }).catch(() => setIsAuthChecking(false));
   }} onGuestLogin={handleGuestLogin} />;
 
   if (appMode === 'choice') {
