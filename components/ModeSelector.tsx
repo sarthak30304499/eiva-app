@@ -9,7 +9,7 @@ interface ModeSelectorProps {
 
 const ModeSelector: React.FC<ModeSelectorProps> = ({ user, onSelect }) => {
   return (
-    <div className="min-h-screen galaxy-bg flex flex-col items-center justify-center p-8 font-['Plus_Jakarta_Sans'] relative overflow-hidden">
+    <div className="min-h-screen galaxy-bg flex flex-col items-center justify-center p-8 relative overflow-hidden">
       <div className="absolute inset-0 stars"></div>
       <div className="planet planet-1"></div>
       <div className="planet planet-2"></div>

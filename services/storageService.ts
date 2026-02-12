@@ -247,12 +247,21 @@ export const listenToFollows = (callback: () => void) => {
   return () => supabase.removeChannel(channel);
 };
 
-export const listenToUsers = (callback: () => void) => {
+export const listenToUsers = (callback: (users: User[]) => void) => {
+  const fetchAndReturn = async () => {
+    const users = await getAllUsersList();
+    callback(users);
+  };
+
   const channel = supabase.channel('users-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, callback)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, fetchAndReturn)
     .subscribe();
-  return () => supabase.removeChannel(channel);
+
+  fetchAndReturn();
+
+  return () => { supabase.removeChannel(channel); };
 };
+
 
 export const deletePost = async (postId: string) => {
   const { error } = await supabase.from('posts').delete().eq('id', postId);

@@ -91,7 +91,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGuestLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex bg-white dark:bg-gray-950 font-['Plus_Jakarta_Sans']">
+    <div className="min-h-screen flex bg-white dark:bg-gray-950">
       <div className="hidden lg:flex flex-1 bg-genz-gradient flex-col items-center justify-center text-white p-12">
         <h1 className="text-8xl font-black italic tracking-tighter mb-4 floating">EIVA</h1>
         <p className="text-2xl font-bold opacity-90">Ask. Learn. Grow with AI.</p>
