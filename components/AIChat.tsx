@@ -16,7 +16,11 @@ interface AIChatProps {
 }
 
 const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToChoice, theme, setTheme }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Load initial messages from localStorage
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = localStorage.getItem('eiva-ai-history');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -33,7 +37,24 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(() => scrollToBottom(), [messages, isLoading]);
 
+  // Save to localStorage whenever messages change
+  useEffect(() => {
+    localStorage.setItem('eiva-ai-history', JSON.stringify(messages));
+  }, [messages]);
+
   const [speechError, setSpeechError] = useState<string | null>(null);
+
+  const clearChat = () => {
+    if (confirm('Are you sure you want to clear the chat history?')) {
+      setMessages([]);
+      localStorage.removeItem('eiva-ai-history');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    // Optional: Show a toast or temporary "Copied!" state
+  };
 
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -263,6 +284,14 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
             <span className="text-xs font-bold text-white/50 uppercase tracking-widest mr-2">EIVA</span>
             <ThemeSelector currentTheme={theme} onThemeChange={setTheme} />
             <div className="w-px h-4 bg-white/10 mx-2"></div>
+            {messages.length > 0 && (
+              <button
+                onClick={clearChat}
+                className="px-3 py-1.5 rounded-full hover:bg-white/10 text-xs font-bold text-red-300 transition-all mr-2"
+              >
+                Clear
+              </button>
+            )}
             <button
               onClick={onReturnToChoice}
               className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition-all"
@@ -285,8 +314,8 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
             </div>
           )}
 
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up group`}>
+          {messages.map((msg, index) => (
+            <div key={msg.id || index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up group`}>
               <div className={`max-w-[85%] md:max-w-[70%] flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
 
                 {/* Avatar */}
@@ -316,7 +345,35 @@ const AIChat: React.FC<AIChatProps> = ({ user, voiceMode, onLogout, onReturnToCh
                             : 'font-medium'
                             }`}>
                             {msg.role === 'model' ? (
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  code({ node, inline, className, children, ...props }: any) {
+                                    const match = /language-(\w+)/.exec(className || '')
+                                    return !inline && match ? (
+                                      <div className="relative group/code my-4">
+                                        <div className="absolute right-2 top-2 z-10 opacity-0 group-hover/code:opacity-100 transition-opacity">
+                                          <button
+                                            onClick={() => copyToClipboard(String(children).replace(/\n$/, ''))}
+                                            className="bg-white/10 hover:bg-white/20 text-white text-[10px] px-2 py-1 rounded border border-white/20 backdrop-blur-md"
+                                          >
+                                            Copy
+                                          </button>
+                                        </div>
+                                        <pre className={className}>
+                                          <code className={className} {...props}>
+                                            {children}
+                                          </code>
+                                        </pre>
+                                      </div>
+                                    ) : (
+                                      <code className={className} {...props}>
+                                        {children}
+                                      </code>
+                                    )
+                                  }
+                                }}
+                              >
                                 {part.text}
                               </ReactMarkdown>
                             ) : (

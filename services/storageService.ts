@@ -115,10 +115,6 @@ export const listenToAuth = (callback: (user: User | null) => void) => {
 };
 
 export const uploadPostImage = async (file: File, postId: string): Promise<string | null> => {
-  // NOTE: Schema does not seem to have image_url in 'posts'.
-  // We still upload to storage, but we might not be able to save the URL in the 'posts' table
-  // unless we add a column or store it in 'content' JSON?
-  // For now, we return the URL but accept it might not be persisted in DB row.
   try {
     const fileExt = file.name.split('.').pop();
     const fileName = `${postId}.${fileExt}`;
@@ -131,6 +127,40 @@ export const uploadPostImage = async (file: File, postId: string): Promise<strin
     return data.publicUrl;
   } catch (e) {
     console.error("Image upload failed", e);
+    return null;
+  }
+};
+
+export const uploadProfilePicture = async (userId: string, file: File): Promise<string | null> => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage.from('eiva-images').upload(filePath, file, { upsert: true });
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from('eiva-images').getPublicUrl(filePath);
+    return data.publicUrl;
+  } catch (e) {
+    console.error("Profile upload failed", e);
+    return null;
+  }
+};
+
+export const uploadChatImage = async (file: File): Promise<string | null> => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `chat-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `chat/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage.from('eiva-images').upload(filePath, file);
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from('eiva-images').getPublicUrl(filePath);
+    return data.publicUrl;
+  } catch (e) {
+    console.error("Chat image upload failed", e);
     return null;
   }
 };

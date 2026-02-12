@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Message } from '../types';
-import { searchUsers, fetchMessages, sendMessage, listenToMessages, fetchRecentChats, updateUserProfile, fetchUserProfile } from '../services/storageService'; // Added fetchRecentChats, updateUserProfile, fetchUserProfile
+import { searchUsers, fetchMessages, sendMessage, listenToMessages, fetchRecentChats, updateUserProfile, fetchUserProfile, uploadProfilePicture, uploadChatImage } from '../services/storageService';
 import ThemeSelector, { Theme } from './ThemeSelector';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface UserChatProps {
     currentUser: User;
@@ -26,8 +28,11 @@ const UserChat: React.FC<UserChatProps> = ({ currentUser: initialUser, onReturnT
     const [newUsername, setNewUsername] = useState(currentUser.username);
     const [newName, setNewName] = useState(currentUser.name);
     const [newBio, setNewBio] = useState(currentUser.bio);
+    const [isUploading, setIsUploading] = useState(false); // Upload state
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null); // For profile pic
+    const chatFileInputRef = useRef<HTMLInputElement>(null); // For chat images
 
     // Initial Load
     useEffect(() => {
@@ -110,10 +115,50 @@ const UserChat: React.FC<UserChatProps> = ({ currentUser: initialUser, onReturnT
             });
             await refreshCurrentUser();
             setIsEditingProfile(false);
-            // alert("Profile updated!"); // Or toast
         } catch (e) {
             console.error("Profile update failed", e);
             alert("Failed to update profile.");
+        }
+    };
+
+    const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const publicUrl = await uploadProfilePicture(currentUser.id, file);
+            if (publicUrl) {
+                await updateUserProfile(currentUser.id, { avatar: publicUrl });
+                await refreshCurrentUser();
+            }
+        } catch (error) {
+            console.error("Profile upload error", error);
+            alert("Failed to upload profile picture.");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleChatImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Indicate uploading? Maybe just insert placeholder text first
+        const placeholder = `![Uploading ${file.name}...]()...`;
+        setNewMessage(prev => prev + '\n' + placeholder);
+
+        try {
+            const publicUrl = await uploadChatImage(file);
+            if (publicUrl) {
+                // Replace placeholder with actual markdown
+                setNewMessage(prev => prev.replace(placeholder, `![Image](${publicUrl})`));
+            } else {
+                setNewMessage(prev => prev.replace(placeholder, `(Image upload failed)`));
+            }
+        } catch (error) {
+            console.error("Chat image upload error", error);
+            setNewMessage(prev => prev.replace(placeholder, `(Image upload failed)`));
         }
     };
 
@@ -195,7 +240,6 @@ const UserChat: React.FC<UserChatProps> = ({ currentUser: initialUser, onReturnT
                                         <div className="ml-3 flex-1 border-b border-gray-100 dark:border-gray-800 pb-3">
                                             <div className="flex justify-between items-baseline">
                                                 <h3 className="font-medium text-gray-900 dark:text-gray-100">{user.name || user.username}</h3>
-                                                {/* Timestamp could go here */}
                                             </div>
                                             <p className="text-xs text-gray-500 dark:text-[#8696a0] truncate">
                                                 Click to open chat
@@ -258,11 +302,15 @@ const UserChat: React.FC<UserChatProps> = ({ currentUser: initialUser, onReturnT
                                 const isMe = msg.senderId === currentUser.id;
                                 return (
                                     <div key={msg.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[75%] md:max-w-[60%] rounded-lg px-2 py-1.5 shadow-sm relative text-sm ${isMe
+                                        <div className={`max-w-[85%] md:max-w-[70%] rounded-lg px-2 py-1.5 shadow-sm relative text-sm ${isMe
                                                 ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-gray-900 dark:text-white rounded-tr-none'
                                                 : 'bg-white dark:bg-[#202c33] text-gray-900 dark:text-white rounded-tl-none'
                                             }`}>
-                                            <p className="mr-8 pb-1 leading-relaxed">{msg.content}</p>
+                                            <div className="mr-8 pb-1 leading-relaxed prose prose-sm dark:prose-invert prose-p:my-0 prose-pre:my-1 prose-pre:bg-black/50 prose-img:rounded-md max-w-none">
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {msg.content}
+                                                </ReactMarkdown>
+                                            </div>
                                             <span className={`text-[10px] absolute bottom-1 right-2 ${isMe ? 'text-gray-500 dark:text-[#8696a0]' : 'text-gray-400 dark:text-[#8696a0]'}`}>
                                                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
@@ -275,12 +323,27 @@ const UserChat: React.FC<UserChatProps> = ({ currentUser: initialUser, onReturnT
 
                         {/* Input Area */}
                         <div className="px-4 py-3 bg-gray-100 dark:bg-[#202c33] flex items-center gap-2 z-10">
+                            <button
+                                onClick={() => chatFileInputRef.current?.click()}
+                                className="p-2 text-gray-500 dark:text-[#8696a0] hover:bg-gray-200 dark:hover:bg-[#2a3942] rounded-full transition"
+                                title="Upload Image"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            </button>
+                            <input
+                                type="file"
+                                ref={chatFileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleChatImageUpload}
+                            />
+
                             <input
                                 type="text"
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                placeholder="Type a message"
+                                placeholder="Type a message (Markdown supported)"
                                 className="flex-1 rounded-lg border-none bg-white dark:bg-[#2a3942] px-4 py-2.5 focus:ring-0 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-[#8696a0]"
                             />
                             <button
@@ -322,9 +385,12 @@ const UserChat: React.FC<UserChatProps> = ({ currentUser: initialUser, onReturnT
 
                         <div className="flex-1 overflow-y-auto bg-[#f0f2f5] dark:bg-[#111b21] p-4">
                             <div className="flex justify-center my-8">
-                                <div className="relative group cursor-pointer">
+                                <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                                     <img src={currentUser.avatar} className="w-40 h-40 rounded-full object-cover border-4 border-transparent group-hover:opacity-70 transition" />
-                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white font-bold text-sm">CHANGE</div>
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white font-bold text-sm bg-black/30 rounded-full">
+                                        {isUploading ? 'UPLOADING...' : 'CHANGE'}
+                                    </div>
+                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleProfilePicUpload} />
                                 </div>
                             </div>
 
